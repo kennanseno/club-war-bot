@@ -16,9 +16,8 @@ export async function DiscordRequest(endpoint, options) {
   });
   // throw API errors
   if (!res.ok) {
-    const data = await res.json();
-    console.log(res.status);
-    throw new Error(JSON.stringify(data));
+    const responseText = await res.text();
+    throw new Error(`Discord API request failed (${res.status}): ${responseText}`);
   }
   // return original response
   return res;
@@ -28,12 +27,8 @@ export async function InstallGlobalCommands(appId, commands) {
   // API endpoint to overwrite global commands
   const endpoint = `applications/${appId}/commands`;
 
-  try {
-    // This is calling the bulk overwrite endpoint: https://discord.com/developers/docs/interactions/application-commands#bulk-overwrite-global-application-commands
-    await DiscordRequest(endpoint, { method: 'PUT', body: commands });
-  } catch (err) {
-    console.error(err);
-  }
+  // This is calling the bulk overwrite endpoint: https://discord.com/developers/docs/interactions/application-commands#bulk-overwrite-global-application-commands
+  await DiscordRequest(endpoint, { method: 'PUT', body: commands });
 }
 
 // Simple method that returns a random emoji from list

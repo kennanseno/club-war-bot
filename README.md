@@ -1,108 +1,157 @@
-# Getting Started app for Discord
+# Club War Attendance Bot
 
-This project contains a basic rock-paper-scissors-style Discord app written in JavaScript, built for the [getting started guide](https://discord.com/developers/docs/getting-started).
+This Discord bot sends club-war reminders and records attendance for wars held every Monday, Wednesday, and Saturday from 8:00 to 9:00 PM Philippines time (`Asia/Manila`).
 
-![Demo of app](https://github.com/discord/discord-example-app/raw/main/assets/getting-started-demo.gif?raw=true)
+## What it does
 
-## Project structure
-Below is a basic overview of the project structure:
+- Sends an initial `@everyone` reminder at 5:00 PM Manila time, preparation reminders at 6:00, 6:30, 7:00, and 7:30 PM, an 8:00 PM gamer-style war-start reminder, a 9:00 PM gamer-style war-end reminder, and a 9:30 PM attendance-close reminder. Every reminder ends by directing members to `/war-info` for command help. The start and end messages remind members to use `/attended` by 9:30 PM or they won't be counted for that war's salary. Other reminders explain member and admin commands.
+- On days without a scheduled war, sends a 7:30 PM `@everyone` reminder clarifying there is no war tonight and showing the weekly war schedule and bot usage instructions.
+- Reminders emphasize that regroup is at 7:30 PM, offline guild members are kicked at 7:40 PM, and members who will be late should use `/late` and select the war date to notify admins.
+- Announces that attendance opens at the 7:30 PM regroup and closes at 9:30 PM.
+- Lets members record themselves with `/attended` between 7:30 and 9:30 PM on war days. Replies are private and explain whether attendance was recorded, already existed, or was rejected. On non-war days, the reply includes the regular schedule and next session.
+- Lets members use `/late date:DD-MM-YYYY` to privately report in advance that they will be late for a scheduled war. Each member is listed once per war date, and authorized admins can review reports with `/war-admin late date:DD-MM-YYYY`. Today and future war dates are accepted.
+- Provides `/war-info` to show member and admin commands, the weekly schedule, attendance window, reminder times, and this server's configured channel and admin roles.
+- Reminder messages use bold emphasis and blank lines between sections for readability.
+- Posts an ordered, four-pair-per-row attendee table after the 9:30 PM close announcement to keep the roster compact. Names are shown without pinging attendees, and long lists are split into multiple messages.
+- Provides `/war-admin` commands to configure the channel and admin roles, view attendance, and manually add a member to a scheduled session.
 
-```
-├── examples    -> short, feature-specific sample apps
-│   ├── app.js  -> finished app.js code
-│   ├── button.js
-│   ├── command.js
-│   ├── modal.js
-│   ├── selectMenu.js
-├── .env.sample -> sample .env file
-├── app.js      -> main entrypoint for app
-├── commands.js -> slash command payloads + helpers
-├── game.js     -> logic specific to RPS
-├── utils.js    -> utility functions and enums
-├── package.json
-├── README.md
-└── .gitignore
-```
+Schedule defaults and reminder text are centralized in [config.js](./config.js). The bot's server settings and attendance history are stored in `data/club-war-data.json`, which is ignored by Git. Keep a backup of this file if attendance history matters. The bot assumes one running process and a computer with durable project storage.
 
-## Running app locally
+## Run locally
 
-Before you start, you'll need to install [NodeJS](https://nodejs.org/en/download/) and [create a Discord app](https://discord.com/developers/applications) with the proper permissions:
-- `applications.commands`
-- `bot` (with Send Messages enabled)
+### 1. Install Node.js and dependencies
 
+Use Node.js 18 or newer (Node.js 20 LTS is recommended). From the project folder, install dependencies:
 
-Configuring the app is covered in detail in the [getting started guide](https://discord.com/developers/docs/getting-started).
-
-### Setup project
-
-First clone the project:
-```
-git clone https://github.com/discord/discord-example-app.git
-```
-
-Then navigate to its directory and install dependencies:
-```
-cd discord-example-app
+```sh
 npm install
+node --version
 ```
-### Get app credentials
 
-Fetch the credentials from your app's settings and add them to a `.env` file (see `.env.sample` for an example). You'll need your app ID (`APP_ID`), bot token (`DISCORD_TOKEN`), and public key (`PUBLIC_KEY`).
+### 2. Configure Discord credentials
 
-Fetching credentials is covered in detail in the [getting started guide](https://discord.com/developers/docs/getting-started).
+Create a Discord application in the [Discord Developer Portal](https://discord.com/developers/applications), add a bot, and copy the application ID, bot token, and public key from the application's settings. Create a `.env` file in the project root based on [.env.sample](./.env.sample):
 
-> 🔑 Environment variables can be added to the `.env` file in Glitch or when developing locally, and in the Secrets tab in Replit (the lock icon on the left).
-
-### Install slash commands
-
-The commands for the example app are set up in `commands.js`. All of the commands in the `ALL_COMMANDS` array at the bottom of `commands.js` will be installed when you run the `register` command configured in `package.json`:
-
+```env
+APP_ID=<YOUR_APP_ID>
+DISCORD_TOKEN=<YOUR_BOT_TOKEN>
+PUBLIC_KEY=<YOUR_PUBLIC_KEY>
 ```
+
+Keep `.env` private; it is ignored by Git. Register or update the slash commands:
+
+```sh
 npm run register
 ```
 
-### Run the app
+#### Whenever you add or change a slash command
 
-After your credentials are added, go ahead and run the app:
+1. Update its definition in `commands.js` and implement its interaction handler in `app.js`.
+2. Register the updated command definitions with Discord:
 
+   ```sh
+   npm run register
+   ```
+
+3. Restart the running bot so it loads the updated code. For a PM2-managed bot:
+
+   ```sh
+   pm2 restart club-war-bot
+   ```
+
+   If running it in a terminal, stop the old process and start it again with `npm start`. You do not need to restart ngrok unless its tunnel itself is down. If a command does not immediately appear or update in Discord, refresh Discord and check again.
+
+### 3. Start the bot
+
+In one terminal, start the interactions server:
+
+```sh
+npm start
 ```
-node app.js
+
+The server listens on port `3000` by default. Keep it running while using the bot.
+
+### 4. Expose the local server with ngrok
+
+Discord needs a public HTTPS URL to deliver interactions to your local computer. Install [ngrok](https://ngrok.com/download), add your ngrok authtoken once, and use your reserved domain if you have one:
+
+```sh
+ngrok config add-authtoken <YOUR_NGROK_AUTHTOKEN>
+ngrok http http://localhost:3000 --url https://<your-reserved-domain>
 ```
 
-> ⚙️ A package [like `nodemon`](https://github.com/remy/nodemon), which watches for local changes and restarts your app, may be helpful while locally developing.
+If you don't have a reserved domain, start a temporary tunnel instead:
 
-If you aren't following the [getting started guide](https://discord.com/developers/docs/getting-started), you can move the contents of `examples/app.js` (the finished `app.js` file) to the top-level `app.js`.
-
-### Set up interactivity
-
-The project needs a public endpoint where Discord can send requests. To develop and test locally, you can use something like [`ngrok`](https://ngrok.com/) to tunnel HTTP traffic.
-
-Install ngrok if you haven't already, then start listening on port `3000`:
-
-```
+```sh
 ngrok http 3000
 ```
 
-You should see your connection open:
+Leave ngrok running. Copy the HTTPS forwarding address printed by ngrok, then in the Discord Developer Portal open your application's **General Information** page and set **Interactions Endpoint URL** to the address followed by `/interactions`, for example:
 
-```
-Tunnel Status                 online
-Version                       2.0/2.0
-Web Interface                 http://127.0.0.1:4040
-Forwarding                    https://1234-someurl.ngrok.io -> localhost:3000
-
-Connections                  ttl     opn     rt1     rt5     p50     p90
-                              0       0       0.00    0.00    0.00    0.00
+```text
+https://<your-ngrok-domain>/interactions
 ```
 
-Copy the forwarding address that starts with `https`, in this case `https://1234-someurl.ngrok.io`, then go to your [app's settings](https://discord.com/developers/applications).
+Save the URL. A temporary ngrok URL changes when you restart its tunnel, so update the Discord endpoint each time it changes. A reserved ngrok domain keeps the same URL.
 
-On the **General Information** tab, there will be an **Interactions Endpoint URL**. Paste your ngrok address there, and append `/interactions` to it (`https://1234-someurl.ngrok.io/interactions` in the example).
+### 5. Invite and configure the bot
 
-Click **Save Changes**, and your app should be ready to run 🚀
+Invite the application to your server with the `applications.commands` scope and a bot role that can view and send messages in the reminder channel and mention `@everyone`. In the channel where reminders and admin commands should appear, run `/war-admin setup` and select the initial admin role. The person running initial setup must have Discord's **Manage Server** permission. Run `/war-admin settings` to verify setup.
 
-## Other resources
-- Read **[the documentation](https://discord.com/developers/docs/intro)** for in-depth information about API features.
-- Browse the `examples/` folder in this project for smaller, feature-specific code examples
-- Join the **[Discord Developers server](https://discord.gg/discord-developers)** to ask questions about the API, attend events hosted by the Discord API team, and interact with other devs.
-- Check out **[community resources](https://discord.com/developers/docs/topics/community-resources#community-resources)** for language-specific tools maintained by community members.
+## Keep it running in the background (optional)
+
+The app and ngrok tunnel both need to stay online. For macOS, [PM2](https://pm2.keymetrics.io/) can run them in the background and restart them if they exit. Install PM2:
+
+```sh
+npm install --global pm2
+```
+
+From the project directory, start the bot:
+
+```sh
+pm2 start npm --name club-war-bot -- start
+```
+
+Start ngrok using the executable path reported by `command -v ngrok`. Replace the example reserved domain with your own, or omit the `--url` option to use a temporary domain:
+
+```sh
+pm2 start "$(command -v ngrok)" --name club-war-tunnel --interpreter none -- http http://localhost:3000 --url https://<your-reserved-domain>
+```
+
+Check status and logs:
+
+```sh
+pm2 status
+pm2 logs club-war-bot
+pm2 logs club-war-tunnel
+```
+
+To restart or stop them:
+
+```sh
+pm2 restart club-war-bot
+pm2 restart club-war-tunnel
+pm2 stop club-war-bot club-war-tunnel
+```
+
+PM2 keeps processes running after you close Terminal, but your Mac must remain powered on and connected to the internet. To make PM2-managed processes start at login, run `pm2 startup`, follow the command PM2 prints, then run `pm2 save`. Do not start a second copy of the bot or tunnel if it is already managed by PM2.
+
+## Admin and attendance commands
+
+- `/war-info` — show commands, the current war schedule, and server configuration.
+- `/attended` — member self check-in during the 7:30–9:30 PM window.
+- `/late date:DD-MM-YYYY` — privately report in advance that you will be late for a scheduled war.
+- `/war-admin setup` — configure the current channel and initial admin role (requires Manage Server permission, or an already authorized role).
+- `/war-admin settings` — view current bot settings.
+- `/war-admin role-add` and `/war-admin role-remove` — manage authorized admin roles.
+- `/war-admin attendance date:DD-MM-YYYY` — view a scheduled session's attendance (for example, `16-11-2026`).
+- `/war-admin late date:DD-MM-YYYY` — view members who reported they will be late for a scheduled war date (past or future).
+- `/war-admin add-attendance member:@member date:DD-MM-YYYY` — add a member to any scheduled war date, including a past session. Duplicate entries are reported and not added again.
+
+Attendance and late-report lists are displayed in compact four-column tables, with each member numbered in order. Longer lists are split across multiple private replies.
+
+Admin commands are restricted to configured roles and must be run in the configured channel. A server manager can rerun `/war-admin setup` to change the channel and reset the initial admin role.
+
+Attendance sessions are keyed by their Manila calendar date and roll over automatically; no manual reset is needed. The scheduler checks every ten seconds while the app is running. If the computer or process is offline at a scheduled time, that announcement may be missed.
+
+Run the local tests with `npm test`.
