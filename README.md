@@ -148,7 +148,7 @@ PM2 keeps processes running after you close Terminal, but your Mac must remain p
 - `/war-admin late date:DD-MM-YYYY` — view members who reported they will be late for a scheduled war date (past or future).
 - `/war-admin add-attendance member:@member date:DD-MM-YYYY` — add a member to any scheduled war date, including a past session. Duplicate entries are reported and not added again.
 
-Attendance and late-report lists are displayed in compact four-column tables, with each member numbered in order. Longer lists are split across multiple private replies.
+Attendance and late-report lists are displayed in aligned, monospaced four-column tables, with each member numbered in order. Longer lists are split across multiple private replies.
 
 Admin commands are restricted to configured roles and must be run in the configured channel. A server manager can rerun `/war-admin setup` to change the channel and reset the initial admin role.
 

@@ -2,16 +2,24 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { formatMemberTableMessages } from '../member-table.js';
 
-test('member lists are numbered in order and formatted into four-column tables', () => {
+test('member lists are numbered and aligned in monospaced four-column tables', () => {
   const [message] = formatMemberTableMessages(
     'Attendance for 2026-11-16 (5 members):',
     ['Alex', 'Jamie (added by admin)', 'Sam', 'Taylor', 'Uma'],
     'No attendance recorded.',
   );
 
-  assert.match(message, /\|  \|  \|  \|  \|/);
-  assert.match(message, /\| 1\. Alex \| 2\. Jamie \(added by admin\) \| 3\. Sam \| 4\. Taylor \|/);
-  assert.match(message, /\| 5\. Uma \|  \|  \|  \|/);
+  assert.match(message, /```[\s\S]*```/);
+  assert.match(message, /\| 1\. Alex\s+\| 2\. Jamie \(added by admin\)\s+\| 3\. Sam\s+\| 4\. Taylor\s+\|/);
+  assert.match(message, /\| 5\. Uma\s+\| {0,}\| {0,}\| {0,}\|/);
+
+  const tableLines = message.split('\n').slice(2, -1);
+  const columnBoundaries = tableLines.map((line) =>
+    [...line]
+      .flatMap((character, index) => (character === '|' || character === '+' ? [index] : []))
+      .join(','),
+  );
+  assert.equal(new Set(columnBoundaries).size, 1);
 });
 
 test('member table escapes names and removes line breaks', () => {
@@ -37,7 +45,7 @@ test('long member tables split below Discord message limits and repeat headings'
   assert.ok(messages.length > 1);
   for (const message of messages) {
     assert.ok(message.length <= 1800);
-    assert.match(message, /\|  \|  \|  \|  \|/);
+    assert.match(message, /```[\s\S]*```/);
     assert.match(message, /\d+\. Member/);
   }
   for (const member of members) assert.ok(messages.some((message) => message.includes(member)));
