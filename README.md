@@ -8,12 +8,12 @@ This Discord bot sends club-war reminders and records attendance for wars held e
 - On days without a scheduled war, sends a 7:30 PM `@everyone` reminder clarifying there is no war tonight and showing the weekly war schedule and bot usage instructions.
 - Reminders emphasize that regroup is at 7:30 PM, offline guild members are kicked at 7:40 PM, and members who will be late should use `/late` and select the war date to notify admins.
 - Announces that attendance opens at the 7:30 PM regroup and closes at 9:30 PM.
-- Lets members record themselves with `/attended` between 7:30 and 9:30 PM on war days. Replies are private and explain whether attendance was recorded, already existed, or was rejected. On non-war days, the reply includes the regular schedule and next session.
-- Lets members use `/late date:DD-MM-YYYY` to privately report in advance that they will be late for a scheduled war. Each member is listed once per war date, and authorized admins can review reports with `/war-admin late date:DD-MM-YYYY`. Today and future war dates are accepted.
+- Lets members record themselves with `/attended` between 7:30 and 9:30 PM on war days. Attendance and late-report records store their `recordedAt` timestamp to the minute in Manila local time, without a timezone suffix. Attendance and late-report lists display each record's timestamp; admin-added attendance also stores the adding admin's ID.
+- Lets members use `/late date:MM-DD-YYYY` to privately report in advance that they will be late for a scheduled war. Each member is listed once per war date, and authorized admins can review reports with `/war-admin late date:MM-DD-YYYY`. Today and future war dates are accepted.
 - Provides `/war-info` to show member and admin commands, the weekly schedule, attendance window, reminder times, and this server's configured channel and admin roles.
 - Reminder messages use bold emphasis and blank lines between sections for readability.
 - Posts an ordered, four-pair-per-row attendee table after the 9:30 PM close announcement to keep the roster compact. Names are shown without pinging attendees, and long lists are split into multiple messages.
-- Provides `/war-admin` commands to configure the channel and admin roles, view attendance, and manually add a member to a scheduled session.
+- Provides `/war-admin` commands to configure the reminder channel and admin roles, view attendance, and manually add a member to a scheduled session. All slash commands can be used in any server channel; scheduled reminders go to the configured reminder channel.
 
 Schedule defaults and reminder text are centralized in [config.js](./config.js). The bot's server settings and attendance history are stored in `data/club-war-data.json`, which is ignored by Git. Keep a backup of this file if attendance history matters. The bot assumes one running process and a computer with durable project storage.
 
@@ -96,7 +96,7 @@ Save the URL. A temporary ngrok URL changes when you restart its tunnel, so upda
 
 ### 5. Invite and configure the bot
 
-Invite the application to your server with the `applications.commands` scope and a bot role that can view and send messages in the reminder channel and mention `@everyone`. In the channel where reminders and admin commands should appear, run `/war-admin setup` and select the initial admin role. The person running initial setup must have Discord's **Manage Server** permission. Run `/war-admin settings` to verify setup.
+Invite the application to your server with the `applications.commands` scope and a bot role that can view and send messages in the reminder channel and mention `@everyone`. In the channel where reminders should appear, run `/war-admin setup` and select the initial admin role. The person running initial setup must have Discord's **Manage Server** permission. Run `/war-admin settings` to verify setup.
 
 ## Keep it running in the background (optional)
 
@@ -140,17 +140,17 @@ PM2 keeps processes running after you close Terminal, but your Mac must remain p
 
 - `/war-info` — show commands, the current war schedule, and server configuration.
 - `/attended` — member self check-in during the 7:30–9:30 PM window.
-- `/late date:DD-MM-YYYY` — privately report in advance that you will be late for a scheduled war.
+- `/late date:MM-DD-YYYY` — privately report in advance that you will be late for a scheduled war.
 - `/war-admin setup` — configure the current channel and initial admin role (requires Manage Server permission, or an already authorized role).
 - `/war-admin settings` — view current bot settings.
 - `/war-admin role-add` and `/war-admin role-remove` — manage authorized admin roles.
-- `/war-admin attendance date:DD-MM-YYYY` — view a scheduled session's attendance (for example, `16-11-2026`).
-- `/war-admin late date:DD-MM-YYYY` — view members who reported they will be late for a scheduled war date (past or future).
-- `/war-admin add-attendance member:@member date:DD-MM-YYYY` — add a member to any scheduled war date, including a past session. Duplicate entries are reported and not added again.
+- `/war-admin attendance date:MM-DD-YYYY` — view a scheduled session's attendance (for example, `11-16-2026`).
+- `/war-admin late date:MM-DD-YYYY` — view members who reported they will be late for a scheduled war date (past or future).
+- `/war-admin add-attendance member:@member date:MM-DD-YYYY` — add a member to any scheduled war date, including a past session. Duplicate entries are reported and not added again.
 
 Attendance and late-report lists are displayed in aligned, monospaced four-column tables, with each member numbered in order. Longer lists are split across multiple private replies.
 
-Admin commands are restricted to configured roles and must be run in the configured channel. A server manager can rerun `/war-admin setup` to change the channel and reset the initial admin role.
+All slash commands can be run in any server channel. Admin commands still require an authorized role, and initial setup requires Manage Server permission. The configured channel is used for scheduled reminders only. A server manager can rerun `/war-admin setup` in the desired reminder channel to change that channel and reset the initial admin role.
 
 Attendance sessions are keyed by their Manila calendar date and roll over automatically; no manual reset is needed. The scheduler checks every ten seconds while the app is running. If the computer or process is offline at a scheduled time, that announcement may be missed.
 

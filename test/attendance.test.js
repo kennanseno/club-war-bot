@@ -31,6 +31,11 @@ test('self check-ins and admin additions are unique per member and session', asy
     const persisted = await store.read();
     assert.equal(persisted.attendance.length, 1);
     assert.equal(persisted.attendance[0].source, 'self');
+    assert.ok(Number.isFinite(Date.parse(persisted.attendance[0].recordedAt)));
+    assert.match(
+      persisted.attendance[0].recordedAt,
+      /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/,
+    );
   } finally {
     await rm(directory, { recursive: true, force: true });
   }
@@ -52,6 +57,8 @@ test('admin attendance entries retain the administrator audit identity', async (
     const [record] = (await store.read()).attendance;
     assert.equal(record.source, 'admin');
     assert.equal(record.addedBy, 'admin');
+    assert.ok(Number.isFinite(Date.parse(record.recordedAt)));
+    assert.match(record.recordedAt, /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/);
   } finally {
     await rm(directory, { recursive: true, force: true });
   }
@@ -83,6 +90,7 @@ test('late reports are unique per member, guild, and war date', async () => {
     assert.equal(persisted.lateReports.length, 3);
     assert.equal(persisted.lateReports[0].displayName, 'Member');
     assert.ok(persisted.lateReports[0].recordedAt);
+    assert.match(persisted.lateReports[0].recordedAt, /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/);
   } finally {
     await rm(directory, { recursive: true, force: true });
   }

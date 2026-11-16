@@ -5,8 +5,9 @@ import {
   REMINDER_IMPORTANT_TEXT,
   formatTime,
 } from './config.js';
-import { getManilaParts } from './schedule.js';
+import { formatWarDate, getManilaParts } from './schedule.js';
 import { readData, updateData } from './store.js';
+import { formatManilaTimestamp } from './timestamps.js';
 import { DiscordRequest } from './utils.js';
 
 const ROSTER_COLUMN_COUNT = 4;
@@ -48,7 +49,7 @@ export function getScheduledEvents(parts) {
 }
 
 export function formatAttendanceRosterMessages(date, records) {
-  const title = `Attendance for ${date}:`;
+  const title = `Attendance for ${formatWarDate(date)}:`;
   if (records.length === 0) {
     return [`${title}\n${ROSTER_TABLE_HEADER}\n| - | No attendance recorded for this session. |  |  |  |  |  |  |`];
   }
@@ -57,7 +58,9 @@ export function formatAttendanceRosterMessages(date, records) {
   for (let index = 0; index < records.length; index += ROSTER_COLUMN_COUNT) {
     const cells = records.slice(index, index + ROSTER_COLUMN_COUNT).flatMap((record, offset) => [
       String(index + offset + 1),
-      record.displayName.replace(/[\r\n]/g, ' ').replace(/\|/g, '\\|'),
+      `${record.displayName} (recorded ${record.recordedAt ? formatManilaTimestamp(record.recordedAt) : 'time unavailable'})`
+        .replace(/[\r\n]/g, ' ')
+        .replace(/\|/g, '\\|'),
     ]);
     while (cells.length < ROSTER_COLUMN_COUNT * 2) cells.push('');
     rows.push(`| ${cells.join(' | ')} |`);

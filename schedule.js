@@ -69,7 +69,7 @@ export function parseWarDateInput(value) {
   const match = /^(\d{2})-(\d{2})-(\d{4})$/.exec(value);
   if (!match) return null;
 
-  const [, day, month, year] = match;
+  const [, month, day, year] = match;
   const isoDate = `${year}-${month}-${day}`;
   return isWarDate(isoDate) ? isoDate : null;
 }
@@ -83,13 +83,9 @@ export function parseUpcomingWarDateInput(value, now = new Date()) {
 export function formatWarDate(date) {
   const parsed = parseDate(date);
   if (!parsed) throw new Error(`Invalid date: ${date}`);
-  return new Intl.DateTimeFormat('en-PH', {
-    timeZone: 'UTC',
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  }).format(parsed);
+  const month = String(parsed.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(parsed.getUTCDate()).padStart(2, '0');
+  return `${month}-${day}-${parsed.getUTCFullYear()}`;
 }
 
 function addDays(date, count) {

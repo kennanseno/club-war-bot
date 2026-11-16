@@ -1,3 +1,5 @@
+import { getManilaTimestamp } from './timestamps.js';
+
 export async function recordAttendance(update, record) {
   return update((data) => {
     const existing = data.attendance.find(
@@ -10,7 +12,7 @@ export async function recordAttendance(update, record) {
     data.attendance.push({
       ...record,
       source: 'self',
-      recordedAt: new Date().toISOString(),
+      recordedAt: getManilaTimestamp(),
     });
     return 'recorded';
   });
@@ -29,7 +31,7 @@ export async function addAttendanceManually(update, record) {
       ...record,
       source: 'admin',
       addedBy: record.addedBy,
-      recordedAt: new Date().toISOString(),
+      recordedAt: getManilaTimestamp(),
     });
     return 'added';
   });
@@ -46,7 +48,7 @@ export async function recordLateReport(update, record) {
     if (existing) return 'duplicate';
     data.lateReports.push({
       ...record,
-      recordedAt: new Date().toISOString(),
+      recordedAt: getManilaTimestamp(),
     });
     return 'recorded';
   });

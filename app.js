@@ -20,6 +20,7 @@ import {
 import {
   getAttendanceMessage,
   getAttendanceStatus,
+  formatWarDate,
   parseUpcomingWarDateInput,
   parseWarDateInput,
 } from './schedule.js';
@@ -27,6 +28,7 @@ import { readData, updateData } from './store.js';
 import { startScheduler } from './scheduler.js';
 import { DiscordRequest } from './utils.js';
 import { formatMemberTableMessages } from './member-table.js';
+import { formatManilaTimestamp } from './timestamps.js';
 
 for (const variable of ['APP_ID', 'DISCORD_TOKEN', 'PUBLIC_KEY']) {
   if (!process.env[variable]) {
@@ -103,10 +105,11 @@ function requireGuild(body, res) {
 }
 
 function splitAttendanceList(sessionDate, attendance) {
-  const header = `Attendance for ${sessionDate} (${attendance.length} member${attendance.length === 1 ? '' : 's'}):`;
+  const formattedDate = formatWarDate(sessionDate);
+  const header = `Attendance for ${formattedDate} (${attendance.length} member${attendance.length === 1 ? '' : 's'}):`;
   const members = attendance.map(
     (record) =>
-      `${record.displayName}${record.source === 'admin' ? ' (added by admin)' : ''}`,
+      `${record.displayName}${record.source === 'admin' ? ' (added by admin)' : ''} (recorded ${record.recordedAt ? formatManilaTimestamp(record.recordedAt) : 'time unavailable'})`,
   );
   return formatMemberTableMessages(header, members, 'No attendance recorded.');
 }
@@ -153,7 +156,7 @@ async function handleAttended(body, res) {
   return response(
     res,
     result === 'duplicate'
-      ? `Your attendance for ${status.sessionDate} is already recorded.`
+      ? `Your attendance for ${formatWarDate(status.sessionDate)} is already recorded.`
       : getAttendanceMessage(status),
     true,
   );
@@ -165,7 +168,7 @@ async function handleLate(body, res) {
   if (!sessionDate) {
     return response(
       res,
-      'Choose today or a future Monday, Wednesday, or Saturday war date in DD-MM-YYYY format. Past dates and non-war dates are not accepted.',
+      'Choose today or a future Monday, Wednesday, or Saturday war date in MM-DD-YYYY format. Past dates and non-war dates are not accepted.',
       true,
     );
   }
@@ -184,8 +187,8 @@ async function handleLate(body, res) {
   return response(
     res,
     result === 'duplicate'
-      ? `Your late notice for ${sessionDate} is already recorded. An admin can view it with /war-admin late date:${getOption(body.data.options, 'date')}.`
-      : `Your late notice for the ${sessionDate} war is recorded. An admin can view it with /war-admin late date:${getOption(body.data.options, 'date')}.`,
+      ? `Your late notice for ${formatWarDate(sessionDate)} is already recorded. An admin can view it with /war-admin late date:${getOption(body.data.options, 'date')}.`
+      : `Your late notice for the ${formatWarDate(sessionDate)} war is recorded. An admin can view it with /war-admin late date:${getOption(body.data.options, 'date')}.`,
     true,
   );
 }
@@ -205,10 +208,6 @@ async function handleAdmin(body, res, data) {
   if (subcommand === 'setup' && !isBootstrapAdmin && !isAuthorizedAdmin(body, settings)) {
     return response(res, 'Initial setup requires the Manage Server permission. After setup, authorized roles can manage the bot.', true);
   }
-  if (subcommand !== 'setup' && body.channel_id !== settings?.channelId) {
-    return response(res, `Please run this admin command in the configured channel <#${settings?.channelId}>.`, true);
-  }
-
   if (subcommand === 'setup') {
     const adminRoleId = getOption(options, 'admin_role');
     await updateData((store) => {
@@ -225,7 +224,7 @@ async function handleAdmin(body, res, data) {
     });
     return response(
       res,
-      `Setup complete. Reminders and admin commands will use <#${body.channel_id}>. <@&${adminRoleId}> can manage bot settings and attendance. Use /war-admin settings to review the configuration.`,
+      `Setup complete. Commands can be used in any server channel. Scheduled reminders will be sent in <#${body.channel_id}>. <@&${adminRoleId}> can manage bot settings and attendance. Use /war-admin settings to review the configuration.`,
       true,
     );
   }
@@ -273,7 +272,7 @@ async function handleAdmin(body, res, data) {
   if (subcommand === 'attendance') {
     const sessionDate = parseWarDateInput(getOption(options, 'date'));
     if (!sessionDate) {
-      return response(res, 'That is not a valid scheduled war date. Enter a real Monday, Wednesday, or Saturday date in DD-MM-YYYY format, for example 16-11-2026.', true);
+      return response(res, 'That is not a valid scheduled war date. Enter a real Monday, Wednesday, or Saturday date in MM-DD-YYYY format, for example 11-16-2026.', true);
     }
     const attendance = current.attendance
       .filter((record) => record.guildId === guildId && record.sessionDate === sessionDate)
@@ -286,22 +285,26 @@ async function handleAdmin(body, res, data) {
     if (!sessionDate) {
       return response(
         res,
-        'Enter a real Monday, Wednesday, or Saturday war date in DD-MM-YYYY format, for example 16-11-2026.',
+        'Enter a real Monday, Wednesday, or Saturday war date in MM-DD-YYYY format, for example 11-16-2026.',
         true,
       );
     }
     const lateReports = current.lateReports
       .filter((record) => record.guildId === guildId && record.sessionDate === sessionDate)
       .sort((left, right) => left.displayName.localeCompare(right.displayName));
-    const members = lateReports.map((record) => record.displayName);
-    const header = `Late notices for ${sessionDate} (${members.length} member${members.length === 1 ? '' : 's'}):`;
+    const members = lateReports.map(
+      (record) =>
+        `${record.displayName} (reported ${record.recordedAt ? formatManilaTimestamp(record.recordedAt) : 'time unavailable'})`,
+    );
+    const formattedDate = formatWarDate(sessionDate);
+    const header = `Late notices for ${formattedDate} (${members.length} member${members.length === 1 ? '' : 's'}):`;
     return sendAdminMessages(
       res,
       body,
       formatMemberTableMessages(
         header,
         members,
-        `No members have reported that they will be late for the ${sessionDate} war.`,
+        `No members have reported that they will be late for the ${formattedDate} war.`,
       ),
     );
   }
@@ -310,7 +313,7 @@ async function handleAdmin(body, res, data) {
     const sessionDate = parseWarDateInput(getOption(options, 'date'));
     const memberId = getOption(options, 'member');
     if (!sessionDate) {
-      return response(res, 'That is not a valid scheduled war date. Enter a real Monday, Wednesday, or Saturday date in DD-MM-YYYY format, for example 16-11-2026.', true);
+      return response(res, 'That is not a valid scheduled war date. Enter a real Monday, Wednesday, or Saturday date in MM-DD-YYYY format, for example 11-16-2026.', true);
     }
     const resolvedUser = body.data.resolved?.users?.[memberId];
     const resolvedMember = body.data.resolved?.members?.[memberId];
@@ -331,8 +334,8 @@ async function handleAdmin(body, res, data) {
     return response(
       res,
       result === 'duplicate'
-        ? `${displayName} is already recorded for ${sessionDate}; no duplicate was added.`
-        : `Recorded ${displayName} as attending the ${sessionDate} session. Added by <@${actorId}>.`,
+        ? `${displayName} is already recorded for ${formatWarDate(sessionDate)}; no duplicate was added.`
+        : `Recorded ${displayName} as attending the ${formatWarDate(sessionDate)} session. Added by <@${actorId}>.`,
       true,
     );
   }

@@ -5,18 +5,22 @@ import { formatAttendanceRosterMessages } from '../scheduler.js';
 test('attendance roster is ordered and uses four number/name pairs per row', () => {
   const [message] = formatAttendanceRosterMessages(
     '2026-11-16',
-    ['Alex', 'Jamie', 'Sam', 'Taylor', 'Uma'].map((displayName) => ({ displayName })),
+    ['Alex', 'Jamie', 'Sam', 'Taylor', 'Uma'].map((displayName) => ({
+      displayName,
+      recordedAt: '2026-11-16T19:45',
+    })),
   );
 
   assert.match(message, /\| # \| Member \| # \| Member \| # \| Member \| # \| Member \|/);
-  assert.match(message, /\| 1 \| Alex \| 2 \| Jamie \| 3 \| Sam \| 4 \| Taylor \|/);
-  assert.match(message, /\| 5 \| Uma \|  \|  \|  \|  \|  \|  \|/);
+  assert.match(message, /^Attendance for 11-16-2026:/);
+  assert.match(message, /\| 1 \| Alex \(recorded 2026-11-16 19:45\) \| 2 \| Jamie \(recorded 2026-11-16 19:45\)/);
+  assert.match(message, /5 \| Uma \(recorded 2026-11-16 19:45\)/);
 });
 
 test('attendance roster escapes table separators and line breaks in names', () => {
   const [message] = formatAttendanceRosterMessages('2026-11-16', [
-    { displayName: 'A|B' },
-    { displayName: 'Name\nNext' },
+    { displayName: 'A|B', recordedAt: '2026-11-16T19:45' },
+    { displayName: 'Name\nNext', recordedAt: '2026-11-16T19:45' },
   ]);
 
   assert.match(message, /A\\\|B/);
@@ -27,6 +31,7 @@ test('attendance roster escapes table separators and line breaks in names', () =
 test('long attendance rosters are split into messages with repeated table headers', () => {
   const records = Array.from({ length: 150 }, (_, index) => ({
     displayName: `Member ${index} ${'x'.repeat(32)}`,
+    recordedAt: '2026-11-16T19:45',
   }));
   const messages = formatAttendanceRosterMessages('2026-11-16', records);
 
@@ -42,6 +47,6 @@ test('long attendance rosters are split into messages with repeated table header
 
 test('empty attendance roster has a clear empty state', () => {
   assert.deepEqual(formatAttendanceRosterMessages('2026-11-16', []), [
-    'Attendance for 2026-11-16:\n| # | Member | # | Member | # | Member | # | Member |\n|---:|---|---:|---|---:|---|---:|---|\n| - | No attendance recorded for this session. |  |  |  |  |  |  |',
+    'Attendance for 11-16-2026:\n| # | Member | # | Member | # | Member | # | Member |\n|---:|---|---:|---|---:|---|---:|---|\n| - | No attendance recorded for this session. |  |  |  |  |  |  |',
   ]);
 });

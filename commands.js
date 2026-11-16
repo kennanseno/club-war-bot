@@ -44,7 +44,7 @@ const ADMIN_SUBCOMMANDS = [
       {
         type: 3,
         name: 'date',
-        description: 'Session date as DD-MM-YYYY, e.g. 16-11-2026',
+        description: 'Session date as MM-DD-YYYY, e.g. 11-16-2026',
         required: true,
       },
     ],
@@ -57,7 +57,7 @@ const ADMIN_SUBCOMMANDS = [
       {
         type: 3,
         name: 'date',
-        description: 'Scheduled war date as DD-MM-YYYY, e.g. 16-11-2026',
+        description: 'Scheduled war date as MM-DD-YYYY, e.g. 11-16-2026',
         required: true,
       },
     ],
@@ -71,7 +71,7 @@ const ADMIN_SUBCOMMANDS = [
       {
         type: 3,
         name: 'date',
-        description: 'Session date as DD-MM-YYYY, e.g. 16-11-2026',
+        description: 'Session date as MM-DD-YYYY, e.g. 11-16-2026',
         required: true,
       },
     ],
@@ -94,7 +94,7 @@ const ALL_COMMANDS = [
       {
         type: 3,
         name: 'date',
-        description: 'Upcoming war date as DD-MM-YYYY, e.g. 16-11-2026',
+        description: 'Upcoming war date as MM-DD-YYYY, e.g. 11-16-2026',
         required: true,
       },
     ],

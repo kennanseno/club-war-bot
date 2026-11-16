@@ -27,7 +27,7 @@ export function formatTime({ hour, minute }) {
 }
 
 export const BOT_USAGE_TEXT =
-  `**Attendance:** Members use /attended from ${formatTime(ATTENDANCE_START)} until ${formatTime(ATTENDANCE_END)} on war nights.\n\n**Late notice:** Use /late date:DD-MM-YYYY to notify admins in advance.\n\n**Admins:** Use /war-admin for setup, settings, attendance, and the late list (/war-admin late date:DD-MM-YYYY).`;
+  `**Attendance:** Members use /attended from ${formatTime(ATTENDANCE_START)} until ${formatTime(ATTENDANCE_END)} on war nights.\n\n**Late notice:** Use /late date:MM-DD-YYYY to notify admins in advance.\n\n**Admins:** Use /war-admin for setup, settings, attendance, and the late list (/war-admin late date:MM-DD-YYYY).`;
 
 export const BOT_INFO_REMINDER = '**Need help with the bot commands? Use /war-info.**';
 
@@ -111,7 +111,7 @@ export function getWarInfoMessage(settings) {
     .join(', ');
   const serverConfiguration = settings
     ? [
-        `**Reminder and admin channel:** <#${settings.channelId}>`,
+        `**Reminder channel:** <#${settings.channelId}>`,
         `**Admin roles:** ${settings.adminRoleIds.map((roleId) => `<@&${roleId}>`).join(', ') || 'None'}`,
       ].join('\n')
     : 'This bot has not been configured in this server yet. A server manager can run `/war-admin setup`.';
@@ -119,18 +119,19 @@ export function getWarInfoMessage(settings) {
   return [
     '**Club War Information**',
     `**Schedule:** ${WAR_SCHEDULE_TEXT} ${BOT_CONFIG.timezone}`,
+    '**Commands:** All commands can be used in any server channel. Scheduled reminders are sent to the configured reminder channel.',
     `**Regroup:** ${formatTime(BOT_CONFIG.attendanceStart)}; offline guild members are kicked at 7:40 PM.`,
     `**Attendance:** Use \`/attended\` from ${formatTime(BOT_CONFIG.attendanceStart)} until ${formatTime(BOT_CONFIG.attendanceEnd)} on war days.`,
-    '**Late notice:** Use `/late date:DD-MM-YYYY` to report you will be late for today’s or a future war.',
+    '**Late notice:** Use `/late date:MM-DD-YYYY` to report you will be late for today’s or a future war.',
     `**Reminders:** ${reminders} on war days; 7:30 PM on non-war days.`,
     '',
-    '**Admin commands** (authorized admin role, in the configured channel):',
+    '**Admin commands** (authorized admin role):',
     '`/war-admin setup` — configure the channel and initial admin role.',
     '`/war-admin settings` — view current bot settings.',
     '`/war-admin role-add` / `/war-admin role-remove` — manage authorized roles.',
-    '`/war-admin attendance date:DD-MM-YYYY` — view session attendance.',
-    '`/war-admin late date:DD-MM-YYYY` — view late notices for a scheduled war.',
-    '`/war-admin add-attendance member date:DD-MM-YYYY` — add attendance manually.',
+    '`/war-admin attendance date:MM-DD-YYYY` — view session attendance.',
+    '`/war-admin late date:MM-DD-YYYY` — view late notices for a scheduled war.',
+    '`/war-admin add-attendance member date:MM-DD-YYYY` — add attendance manually.',
     '',
     '**Current server configuration**',
     serverConfiguration,

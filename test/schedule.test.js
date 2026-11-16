@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   getAttendanceMessage,
   getAttendanceStatus,
+  formatWarDate,
   isWarDate,
   parseUpcomingWarDateInput,
   parseWarDateInput,
@@ -25,7 +26,15 @@ test('non-war days show the normal schedule and next session', () => {
   assert.equal(status.status, 'not-war-day');
   assert.equal(status.nextWarDate, '2026-11-16');
   assert.match(getAttendanceMessage(status), /Monday, Wednesday, and Saturday, 8:00 PM–9:00 PM/);
-  assert.match(getAttendanceMessage(status), /next attendance window is .*2026/);
+  assert.match(getAttendanceMessage(status), /next attendance window is 11-16-2026/);
+});
+
+test('war dates are displayed as MM-DD-YYYY', () => {
+  assert.equal(formatWarDate('2026-11-16'), '11-16-2026');
+  assert.match(
+    getAttendanceMessage(getAttendanceStatus(new Date('2026-11-16T11:30:00Z'))),
+    /Attendance was recorded for 11-16-2026/,
+  );
 });
 
 test('closed sessions point to the next scheduled date', () => {
@@ -43,23 +52,24 @@ test('only valid Monday, Wednesday, and Saturday dates qualify as war dates', ()
   assert.equal(isWarDate('invalid'), false);
 });
 
-test('admin date input accepts DD-MM-YYYY and normalizes to the stored session date', () => {
-  assert.equal(parseWarDateInput('16-11-2026'), '2026-11-16');
-  assert.equal(parseWarDateInput('18-11-2026'), '2026-11-18');
-  assert.equal(parseWarDateInput('21-11-2026'), '2026-11-21');
-  assert.equal(parseWarDateInput('17-11-2026'), null);
-  assert.equal(parseWarDateInput('31-02-2026'), null);
+test('admin date input accepts MM-DD-YYYY and normalizes to the stored session date', () => {
+  assert.equal(parseWarDateInput('11-16-2026'), '2026-11-16');
+  assert.equal(parseWarDateInput('11-18-2026'), '2026-11-18');
+  assert.equal(parseWarDateInput('11-21-2026'), '2026-11-21');
+  assert.equal(parseWarDateInput('11-17-2026'), null);
+  assert.equal(parseWarDateInput('02-31-2026'), null);
+  assert.equal(parseWarDateInput('16-11-2026'), null);
   assert.equal(parseWarDateInput('2026-11-16'), null);
 });
 
 test('late report date accepts today and future war dates but rejects past and non-war dates', () => {
   const now = new Date('2026-11-15T16:00:00Z');
 
-  assert.equal(parseUpcomingWarDateInput('16-11-2026', now), '2026-11-16');
-  assert.equal(parseUpcomingWarDateInput('18-11-2026', now), '2026-11-18');
-  assert.equal(parseUpcomingWarDateInput('14-11-2026', now), null);
-  assert.equal(parseUpcomingWarDateInput('17-11-2026', now), null);
-  assert.equal(parseUpcomingWarDateInput('31-02-2026', now), null);
+  assert.equal(parseUpcomingWarDateInput('11-16-2026', now), '2026-11-16');
+  assert.equal(parseUpcomingWarDateInput('11-18-2026', now), '2026-11-18');
+  assert.equal(parseUpcomingWarDateInput('11-14-2026', now), null);
+  assert.equal(parseUpcomingWarDateInput('11-17-2026', now), null);
+  assert.equal(parseUpcomingWarDateInput('02-31-2026', now), null);
 });
 
 test('non-war days get a single 7:30 PM weekly schedule reminder', () => {
@@ -73,8 +83,8 @@ test('non-war days get a single 7:30 PM weekly schedule reminder', () => {
   assert.doesNotMatch(events[0].message, /Regroup at 7:30 PM/);
   assert.match(events[0].message, /Monday, Wednesday, and Saturday, 8:00 PM–9:00 PM/);
   assert.match(events[0].message, /\*\*Attendance:\*\* Members use \/attended from 7:30 PM until 9:30 PM/);
-  assert.match(events[0].message, /Use \/late date:DD-MM-YYYY to notify admins in advance/);
-  assert.match(events[0].message, /\/war-admin late date:DD-MM-YYYY/);
+  assert.match(events[0].message, /Use \/late date:MM-DD-YYYY to notify admins in advance/);
+  assert.match(events[0].message, /\/war-admin late date:MM-DD-YYYY/);
   assert.match(events[0].message, /\*\*Admins:\*\* Use \/war-admin/);
   assert.ok(events[0].message.endsWith('**Need help with the bot commands? Use /war-info.**'));
 });
@@ -164,8 +174,9 @@ test('war info shows commands, configured schedule, and server setup', () => {
 
   assert.match(message, /Monday, Wednesday, and Saturday, 8:00 PM–9:00 PM Asia\/Manila/);
   assert.match(message, /`\/attended` from 7:30 PM until 9:30 PM/);
-  assert.match(message, /`\/late date:DD-MM-YYYY`/);
-  assert.match(message, /`\/war-admin attendance date:DD-MM-YYYY`/);
+  assert.match(message, /`\/late date:MM-DD-YYYY`/);
+  assert.match(message, /`\/war-admin attendance date:MM-DD-YYYY`/);
+  assert.match(message, /All commands can be used in any server channel/);
   assert.match(message, /<\#war-channel>/);
   assert.match(message, /<@&war-admin-role>/);
   assert.match(message, /Reminders:\*\* 5:00 PM, 6:00 PM, 6:30 PM, 7:00 PM, 7:30 PM, 8:00 PM, 9:00 PM/);
