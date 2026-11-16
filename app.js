@@ -21,6 +21,7 @@ import {
   getAttendanceMessage,
   getAttendanceStatus,
   formatWarDate,
+  getDefaultLateReportDate,
   getMostRecentWarDate,
   parseUpcomingWarDateInput,
   parseWarDateInput,
@@ -210,7 +211,11 @@ async function handleAttended(body, res) {
 
 async function handleLate(body, res) {
   if (!requireGuild(body, res)) return;
-  const sessionDate = parseUpcomingWarDateInput(getOption(body.data.options, 'date'));
+  const dateInput = getOption(body.data.options, 'date');
+  const sessionDate =
+    dateInput === undefined
+      ? getDefaultLateReportDate()
+      : parseUpcomingWarDateInput(dateInput);
   if (!sessionDate) {
     return response(
       res,
@@ -240,8 +245,8 @@ async function handleLate(body, res) {
     res,
     body,
     result === 'duplicate'
-      ? `Your late notice for ${formatWarDate(sessionDate)} is already recorded. An admin can view it with /war-admin late date:${getOption(body.data.options, 'date')}.`
-      : `Your late notice for the ${formatWarDate(sessionDate)} war is recorded. An admin can view it with /war-admin late date:${getOption(body.data.options, 'date')}.`,
+      ? `Your late notice for ${formatWarDate(sessionDate)} is already recorded. An admin can view it with /war-admin late date:${formatWarDate(sessionDate)}.`
+      : `Your late notice for the ${formatWarDate(sessionDate)} war is recorded. An admin can view it with /war-admin late date:${formatWarDate(sessionDate)}.`,
     formatLateListMessages(sessionDate, lateReports),
   );
 }

@@ -4,6 +4,7 @@ import {
   getAttendanceMessage,
   getAttendanceStatus,
   formatWarDate,
+  getDefaultLateReportDate,
   getMostRecentWarDate,
   isWarDate,
   parseUpcomingWarDateInput,
@@ -80,6 +81,13 @@ test('late report date accepts today and future war dates but rejects past and n
   assert.equal(parseUpcomingWarDateInput('02-31-2026', now), null);
 });
 
+test('default late report date uses today on war days and the next war date otherwise', () => {
+  assert.equal(getDefaultLateReportDate(new Date('2026-11-16T00:00:00Z')), '2026-11-16');
+  assert.equal(getDefaultLateReportDate(new Date('2026-11-17T00:00:00Z')), '2026-11-18');
+  assert.equal(getDefaultLateReportDate(new Date('2026-11-20T00:00:00Z')), '2026-11-21');
+  assert.equal(getDefaultLateReportDate(new Date('2026-11-22T00:00:00Z')), '2026-11-23');
+});
+
 test('non-war days get a single 7:30 PM weekly schedule reminder', () => {
   const parts = getManilaParts(new Date('2026-11-17T11:30:00Z'));
   const events = getScheduledEvents(parts);
@@ -96,7 +104,8 @@ test('non-war days get a single 7:30 PM weekly schedule reminder', () => {
   assert.match(events[0].message, /`\/war-admin fund gold value:<text>`/);
   assert.match(events[0].message, /`\/war-admin fund php value:<text>`/);
   assert.match(events[0].message, /`\/war-admin fund channel channel:<channel>`/);
-  assert.match(events[0].message, /Use `\/late date:MM-DD-YYYY` to notify admins in advance/);
+  assert.match(events[0].message, /Use `\/late \[date:MM-DD-YYYY\]` to notify admins in advance/);
+  assert.match(events[0].message, /defaults to today if today is a war day, or the next war date/);
   assert.match(events[0].message, /\/war-admin late \[date:MM-DD-YYYY\]/);
   assert.match(events[0].message, /\*\*Admins:\*\* Use `\/war-admin`/);
   assert.ok(events[0].message.endsWith('**Need help with the bot commands? Use `/war-info`.**'));
@@ -112,6 +121,32 @@ test('war-day preparation reminder runs at 5 PM Manila time', () => {
   assert.match(event.message, /@everyone \*\*Club war is tonight at 8:00 PM—please start getting ready!\*\*/);
   assert.match(event.message, /Regroup:\*\* 7:30 PM/);
   assert.ok(event.message.endsWith('**Need help with the bot commands? Use `/war-info`.**'));
+});
+
+test('7:40 PM war-day reminder explains offline kicks and late-notice protection', () => {
+  const events = getScheduledEvents(
+    getManilaParts(new Date('2026-11-16T11:40:00Z')),
+  );
+  const reminder = events.find((event) => event.key === 'late_kick_1940');
+  const lateRoster = events.find((event) => event.key === 'late_roster_1940');
+
+  assert.ok(reminder);
+  assert.equal(reminder.everyone, true);
+  assert.match(reminder.message, /@everyone/);
+  assert.match(reminder.message, /offline members who have not reported.*are now being kicked/i);
+  assert.match(reminder.message, /make room for others who want to join/i);
+  assert.match(reminder.message, /recorded a late notice for this war will be kept.*not kicked/i);
+  assert.ok(reminder.message.endsWith('**Need help with the bot commands? Use `/war-info`.**'));
+
+  assert.ok(lateRoster);
+  assert.equal(lateRoster.lateRoster, true);
+  assert.equal(lateRoster.rosterTitle, 'Members who reported late for 11-16-2026:');
+
+  const offDayEvents = getScheduledEvents(
+    getManilaParts(new Date('2026-11-17T11:40:00Z')),
+  );
+  assert.equal(offDayEvents.some((event) => event.key === 'late_kick_1940'), false);
+  assert.equal(offDayEvents.some((event) => event.key === 'late_roster_1940'), false);
 });
 
 test('all war-day announcements include the regroup, kick-off, and late notice', () => {
@@ -132,7 +167,7 @@ test('all war-day announcements include the regroup, kick-off, and late notice',
     assert.ok(event.message.endsWith('**Need help with the bot commands? Use `/war-info`.**'));
     assert.match(event.message, /Regroup.*7:30 PM/s);
     assert.match(event.message, /kicked at 7:40 PM/);
-    assert.match(event.message, /Running late for a war\? Use `\/late` and select the war date to notify admins/);
+    assert.match(event.message, /Running late for a war\? Use `\/late` and optionally choose a date/);
     assert.match(event.message, /\*\*Attendance:\*\* Members use `\/attended` from 7:30 PM until 9:30 PM/);
     assert.match(event.message, /\*\*Admins:\*\* Use `\/war-admin`/);
     if (time === '2026-11-16T13:30:00Z') {
@@ -202,7 +237,8 @@ test('war info shows commands, configured schedule, and server setup', () => {
 
   assert.match(message, /Monday, Wednesday, and Saturday, 8:00 PM–9:00 PM Asia\/Manila/);
   assert.match(message, /`\/attended` from 7:30 PM until 9:30 PM/);
-  assert.match(message, /`\/late date:MM-DD-YYYY`/);
+  assert.match(message, /Use `\/late \[date:MM-DD-YYYY\]`/);
+  assert.match(message, /date defaults to today on war days or the next war date otherwise/);
   assert.match(message, /`\/war-admin attendance \[date:MM-DD-YYYY\]`.*defaults to the latest war date/);
   assert.match(message, /`\/war-admin late \[date:MM-DD-YYYY\]`.*defaults to the latest war date/);
   assert.match(message, /`\/guild-fund view`/);
@@ -214,7 +250,7 @@ test('war info shows commands, configured schedule, and server setup', () => {
   assert.match(message, /All commands can be used in any server channel/);
   assert.match(message, /<\#war-channel>/);
   assert.match(message, /<@&war-admin-role>/);
-  assert.match(message, /Reminders:\*\* 5:00 PM, 6:00 PM, 6:30 PM, 7:00 PM, 7:30 PM, 8:00 PM, 9:00 PM/);
+  assert.match(message, /Reminders:\*\* 5:00 PM, 6:00 PM, 6:30 PM, 7:00 PM, 7:30 PM, 7:40 PM, 8:00 PM, 9:00 PM/);
 });
 
 test('war info explains setup when the server is not configured', () => {

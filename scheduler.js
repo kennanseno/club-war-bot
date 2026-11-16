@@ -7,7 +7,10 @@ import {
 } from './config.js';
 import { formatWarDate, getManilaParts } from './schedule.js';
 import { readData, updateData } from './store.js';
-import { formatAttendanceListMessages } from './attendance-lists.js';
+import {
+  formatAttendanceListMessages,
+  formatLateListMessages,
+} from './attendance-lists.js';
 import { DiscordRequest } from './utils.js';
 
 export function getScheduledEvents(parts) {
@@ -16,6 +19,13 @@ export function getScheduledEvents(parts) {
     ...(isWarDay
       ? [
           ...BOT_CONFIG.reminders,
+          {
+            key: 'late_roster_1940',
+            hour: 19,
+            minute: 40,
+            lateRoster: true,
+            rosterTitle: `Members who reported late for ${formatWarDate(parts.date)}:`,
+          },
           {
             key: 'attendance_roster_2100',
             hour: BOT_CONFIG.warEnd.hour,
@@ -66,6 +76,24 @@ export function formatAttendanceRosterMessages(
 }
 
 async function postEvent(guildId, channelId, date, event) {
+  if (event.lateRoster) {
+    const data = await readData();
+    const lateReports = data.lateReports.filter(
+      (record) => record.guildId === guildId && record.sessionDate === date,
+    );
+    for (const content of formatLateListMessages(
+      date,
+      lateReports,
+      event.rosterTitle,
+    )) {
+      await DiscordRequest(`channels/${channelId}/messages`, {
+        method: 'POST',
+        body: { content, allowed_mentions: { parse: [] } },
+      });
+    }
+    return;
+  }
+
   if (event.roster) {
     const data = await readData();
     const records = data.attendance

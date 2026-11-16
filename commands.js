@@ -157,8 +157,8 @@ const ALL_COMMANDS = [
       {
         type: 3,
         name: 'date',
-        description: 'Upcoming war date as MM-DD-YYYY, e.g. 11-16-2026',
-        required: true,
+        description: 'Upcoming war date; defaults to today or the next war day',
+        required: false,
       },
     ],
     integration_types: [0],

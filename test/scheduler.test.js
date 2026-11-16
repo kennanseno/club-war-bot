@@ -1,6 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { formatAttendanceListMessages } from '../attendance-lists.js';
+import {
+  formatAttendanceListMessages,
+  formatLateListMessages,
+} from '../attendance-lists.js';
 import { formatAttendanceRosterMessages } from '../scheduler.js';
 
 test('attendance roster is a single-column list ordered by earliest recorded time', () => {
@@ -83,4 +86,22 @@ test('scheduled attendance uses the same table format as the admin attendance li
 
   assert.equal(scheduledTable, adminTable);
   assert.match(scheduledMessage, /^Final attendance for 11-16-2026:/);
+});
+
+test('7:40 late roster uses the timestamp-ordered late list table', () => {
+  const [message] = formatLateListMessages(
+    '2026-11-16',
+    [
+      { displayName: 'Later', recordedAt: '2026-11-16T19:35' },
+      { displayName: 'Earlier', recordedAt: '2026-11-16T19:31' },
+    ],
+    'Members who reported late for 11-16-2026:',
+  );
+
+  assert.match(message, /^Members who reported late for 11-16-2026:/);
+  assert.match(message, /\n```\n\+[-+]+\+/);
+  assert.ok(message.indexOf('Earlier (reported') < message.indexOf('Later (reported'));
+  assert.match(message, /\| 1\. Earlier \(reported 11-16-2026 19:31\)/);
+  assert.match(message, /\n\| [^|\n]+ \|\n\+[-+]+\+/);
+  assert.doesNotMatch(message, /\| # \| Member \|/);
 });

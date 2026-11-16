@@ -42,6 +42,9 @@ test('late response list includes current notices for the selected date and repo
   assert.match(message, /^Late notices for 11-18-2026 \(2 members\):/);
   assert.match(message, /\n```\n\+[-+]+\+/);
   assert.match(message, /\n\| 1\. Earlier \(reported/);
+  assert.match(message, /\n\| 2\. Later \(reported/);
+  assert.match(message, /\n\| [^|\n]+ \|\n\+[-+]+\+\n```$/);
+  assert.doesNotMatch(message, /\| # \| Member \|/);
   assert.ok(message.indexOf('Earlier (reported') < message.indexOf('Later (reported'));
   assert.match(message, /Earlier \(reported 11-16-2026 20:12\)/);
 });

@@ -19,13 +19,15 @@ export function formatAttendanceListMessages(
   return formatMemberTableMessages(header, members, emptyMessage);
 }
 
-export function formatLateListMessages(sessionDate, lateReports) {
+export function formatLateListMessages(sessionDate, lateReports, title) {
   const formattedDate = formatWarDate(sessionDate);
   const members = sortByRecordedAt(lateReports).map(
     (record) =>
       `${record.displayName} (reported ${record.recordedAt ? formatManilaTimestamp(record.recordedAt) : 'time unavailable'})`,
   );
-  const header = `Late notices for ${formattedDate} (${members.length} member${members.length === 1 ? '' : 's'}):`;
+  const header =
+    title ??
+    `Late notices for ${formattedDate} (${members.length} member${members.length === 1 ? '' : 's'}):`;
   return formatMemberTableMessages(
     header,
     members,

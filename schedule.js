@@ -131,6 +131,11 @@ export function getNextWarDate(parts) {
   throw new Error('War schedule has no upcoming session');
 }
 
+export function getDefaultLateReportDate(now = new Date()) {
+  const parts = getManilaParts(now);
+  return isWarDate(parts.date) ? parts.date : getNextWarDate(parts);
+}
+
 export function getAttendanceStatus(date = new Date()) {
   const parts = getManilaParts(date);
   const isWarDayToday = BOT_CONFIG.warWeekdays.includes(parts.weekday);
