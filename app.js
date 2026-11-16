@@ -139,8 +139,8 @@ async function sendAdminMessages(res, body, messages) {
 }
 
 async function sendEphemeralList(res, body, confirmation, messages) {
-  response(res, `${confirmation}\n\n${messages[0]}`, true);
-  for (const content of messages.slice(1)) {
+  response(res, confirmation, true);
+  for (const content of messages) {
     await DiscordRequest(`webhooks/${process.env.APP_ID}/${body.token}`, {
       method: 'POST',
       body: {
