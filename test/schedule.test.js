@@ -83,6 +83,11 @@ test('non-war days get a single 7:30 PM weekly schedule reminder', () => {
   assert.doesNotMatch(events[0].message, /Regroup at 7:30 PM/);
   assert.match(events[0].message, /Monday, Wednesday, and Saturday, 8:00 PM–9:00 PM/);
   assert.match(events[0].message, /\*\*Attendance:\*\* Members use \/attended from 7:30 PM until 9:30 PM/);
+  assert.match(events[0].message, /Use \/guild-fund view to see current EP, Gold, and PHP cash/);
+  assert.match(events[0].message, /\/war-admin fund ep value:<text>/);
+  assert.match(events[0].message, /\/war-admin fund gold value:<text>/);
+  assert.match(events[0].message, /\/war-admin fund php value:<text>/);
+  assert.match(events[0].message, /\/war-admin fund channel channel:<channel>/);
   assert.match(events[0].message, /Use \/late date:MM-DD-YYYY to notify admins in advance/);
   assert.match(events[0].message, /\/war-admin late date:MM-DD-YYYY/);
   assert.match(events[0].message, /\*\*Admins:\*\* Use \/war-admin/);
@@ -146,14 +151,29 @@ test('war-day start and end reminders run at 8 PM and 9 PM Manila time', () => {
 
   const warEnd = getScheduledEvents(
     getManilaParts(new Date('2026-11-16T13:00:00Z')),
-  ).find((event) => !event.roster);
+  ).find((event) => event.key === 'war_end_2100');
   assert.equal(warEnd.key, 'war_end_2100');
   assert.equal(warEnd.everyone, true);
   assert.match(warEnd.message, /@everyone \*\*GG, everyone! Club war is over!\*\*/);
-  assert.match(warEnd.message, /used \/attended yet, check in by 9:30 PM Manila time/i);
+  assert.match(warEnd.message, /30 minutes left to use \/attended/i);
+  assert.match(warEnd.message, /Attendance closes at 9:30 PM Manila time/);
   assert.match(warEnd.message, /No check-in means no salary for this war!/);
   assert.match(warEnd.message, /Need help with the bot commands\? Use \/war-info/);
   assert.ok(warEnd.message.endsWith('**Need help with the bot commands? Use /war-info.**'));
+
+  const attendanceRoster = getScheduledEvents(
+    getManilaParts(new Date('2026-11-16T13:00:00Z')),
+  ).find((event) => event.key === 'attendance_roster_2100');
+  assert.ok(attendanceRoster);
+  assert.equal(attendanceRoster.roster, true);
+  assert.equal(attendanceRoster.rosterTitle, 'Attendance recorded so far for 11-16-2026:');
+
+  const finalAttendanceRoster = getScheduledEvents(
+    getManilaParts(new Date('2026-11-16T13:30:00Z')),
+  ).find((event) => event.key === 'attendance_roster');
+  assert.ok(finalAttendanceRoster);
+  assert.equal(finalAttendanceRoster.roster, true);
+  assert.equal(finalAttendanceRoster.rosterTitle, 'Final attendance for 11-16-2026:');
 });
 
 test('non-war day reminder is not scheduled at other times or on war days', () => {
@@ -176,6 +196,12 @@ test('war info shows commands, configured schedule, and server setup', () => {
   assert.match(message, /`\/attended` from 7:30 PM until 9:30 PM/);
   assert.match(message, /`\/late date:MM-DD-YYYY`/);
   assert.match(message, /`\/war-admin attendance date:MM-DD-YYYY`/);
+  assert.match(message, /`\/guild-fund view`/);
+  assert.match(message, /`\/war-admin fund ep value:<text>`/);
+  assert.match(message, /`\/war-admin fund gold value:<text>`/);
+  assert.match(message, /`\/war-admin fund php value:<text>`/);
+  assert.match(message, /`\/war-admin fund channel channel:<channel>`/);
+  assert.match(message, /`\/guild-fund info`/);
   assert.match(message, /All commands can be used in any server channel/);
   assert.match(message, /<\#war-channel>/);
   assert.match(message, /<@&war-admin-role>/);

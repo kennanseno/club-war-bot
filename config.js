@@ -27,7 +27,7 @@ export function formatTime({ hour, minute }) {
 }
 
 export const BOT_USAGE_TEXT =
-  `**Attendance:** Members use /attended from ${formatTime(ATTENDANCE_START)} until ${formatTime(ATTENDANCE_END)} on war nights.\n\n**Late notice:** Use /late date:MM-DD-YYYY to notify admins in advance.\n\n**Admins:** Use /war-admin for setup, settings, attendance, and the late list (/war-admin late date:MM-DD-YYYY).`;
+  `**Attendance:** Members use /attended from ${formatTime(ATTENDANCE_START)} until ${formatTime(ATTENDANCE_END)} on war nights.\n\n**Late notice:** Use /late date:MM-DD-YYYY to notify admins in advance.\n\n**Guild fund:** Use /guild-fund view to see current EP, Gold, and PHP cash; use /guild-fund info for all fund commands.\n\n**Admins:** Use /war-admin for setup, settings, attendance, the late list (/war-admin late date:MM-DD-YYYY), and fund updates (/war-admin fund ep value:<text>, /war-admin fund gold value:<text>, /war-admin fund php value:<text>) or announcement channel setup (/war-admin fund channel channel:<channel>).`;
 
 export const BOT_INFO_REMINDER = '**Need help with the bot commands? Use /war-info.**';
 
@@ -91,7 +91,7 @@ export const BOT_CONFIG = Object.freeze({
       key: 'war_end_2100',
       hour: WAR_END.hour,
       minute: WAR_END.minute,
-      message: `@everyone **GG, everyone! Club war is over!**\n\n**If you haven't used /attended yet, check in by ${formatTime(ATTENDANCE_END)} Manila time. No check-in means no salary for this war!**\n\n${BOT_INFO_REMINDER}`,
+      message: `@everyone **GG, everyone! Club war is over!**\n\n**You have 30 minutes left to use /attended and be recorded for this war. Attendance closes at ${formatTime(ATTENDANCE_END)} Manila time. No check-in means no salary for this war!**\n\n${BOT_INFO_REMINDER}`,
       everyone: true,
     }),
   ]),
@@ -129,9 +129,16 @@ export function getWarInfoMessage(settings) {
     '`/war-admin setup` — configure the channel and initial admin role.',
     '`/war-admin settings` — view current bot settings.',
     '`/war-admin role-add` / `/war-admin role-remove` — manage authorized roles.',
+    '`/war-admin fund ep value:<text>` — update the guild EP balance.',
+    '`/war-admin fund gold value:<text>` — update the guild Gold balance.',
+    '`/war-admin fund php value:<text>` — update the guild PHP cash balance.',
+    '`/war-admin fund channel channel:<channel>` — set where fund updates are announced with `@everyone`.',
+    '`/guild-fund view` — show current EP, Gold, and PHP cash fund values.',
+    '`/guild-fund info` — show all public and admin guild fund commands.',
     '`/war-admin attendance date:MM-DD-YYYY` — view session attendance.',
     '`/war-admin late date:MM-DD-YYYY` — view late notices for a scheduled war.',
     '`/war-admin add-attendance member date:MM-DD-YYYY` — add attendance manually.',
+    '`/guild-fund` — view current EP, Gold, and PHP cash fund balances.',
     '',
     '**Current server configuration**',
     serverConfiguration,

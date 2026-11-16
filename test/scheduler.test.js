@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { formatAttendanceRosterMessages } from '../scheduler.js';
 
-test('attendance roster is ordered and uses four number/name pairs per row', () => {
+test('attendance roster is ordered with one member per row', () => {
   const [message] = formatAttendanceRosterMessages(
     '2026-11-16',
     ['Alex', 'Jamie', 'Sam', 'Taylor', 'Uma'].map((displayName) => ({
@@ -11,10 +11,11 @@ test('attendance roster is ordered and uses four number/name pairs per row', () 
     })),
   );
 
-  assert.match(message, /\| # \| Member \| # \| Member \| # \| Member \| # \| Member \|/);
+  assert.match(message, /\| # \| Member \|/);
   assert.match(message, /^Attendance for 11-16-2026:/);
-  assert.match(message, /\| 1 \| Alex \(recorded 2026-11-16 19:45\) \| 2 \| Jamie \(recorded 2026-11-16 19:45\)/);
-  assert.match(message, /5 \| Uma \(recorded 2026-11-16 19:45\)/);
+  assert.match(message, /\| 1 \| Alex \(recorded 11-16-2026 19:45\) \|/);
+  assert.match(message, /\| 2 \| Jamie \(recorded 11-16-2026 19:45\) \|/);
+  assert.match(message, /\| 5 \| Uma \(recorded 11-16-2026 19:45\) \|/);
 });
 
 test('attendance roster escapes table separators and line breaks in names', () => {
@@ -38,7 +39,7 @@ test('long attendance rosters are split into messages with repeated table header
   assert.ok(messages.length > 1);
   for (const message of messages) {
     assert.ok(message.length <= 1800);
-    assert.match(message, /\| # \| Member \| # \| Member \| # \| Member \| # \| Member \|/);
+    assert.match(message, /\| # \| Member \|/);
   }
   for (const record of records) {
     assert.ok(messages.some((message) => message.includes(record.displayName)));
@@ -47,6 +48,17 @@ test('long attendance rosters are split into messages with repeated table header
 
 test('empty attendance roster has a clear empty state', () => {
   assert.deepEqual(formatAttendanceRosterMessages('2026-11-16', []), [
-    'Attendance for 11-16-2026:\n| # | Member | # | Member | # | Member | # | Member |\n|---:|---|---:|---|---:|---|---:|---|\n| - | No attendance recorded for this session. |  |  |  |  |  |  |',
+    'Attendance for 11-16-2026:\n| # | Member |\n|---:|---|\n| - | No attendance recorded for this session. |',
   ]);
+});
+
+test('attendance roster supports a custom title for an in-progress snapshot', () => {
+  const [message] = formatAttendanceRosterMessages(
+    '2026-11-16',
+    [{ displayName: 'Alex', recordedAt: '2026-11-16T20:45' }],
+    'Attendance recorded so far for 11-16-2026:',
+  );
+
+  assert.match(message, /^Attendance recorded so far for 11-16-2026:/);
+  assert.match(message, /\| 1 \| Alex \(recorded 11-16-2026 20:45\) \|/);
 });

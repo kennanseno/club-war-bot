@@ -10,9 +10,9 @@ test('Manila timestamps are stored to the minute without a timezone suffix', () 
 });
 
 test('Manila timestamp display preserves local timestamps and converts legacy UTC values', () => {
-  assert.equal(formatManilaTimestamp('2026-11-16T12:03'), '2026-11-16 12:03');
+  assert.equal(formatManilaTimestamp('2026-11-16T12:03'), '11-16-2026 12:03');
   assert.equal(
     formatManilaTimestamp('2026-11-16T01:27:56.757Z'),
-    '2026-11-16 09:27',
+    '11-16-2026 09:27',
   );
 });

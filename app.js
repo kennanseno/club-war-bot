@@ -29,6 +29,14 @@ import { startScheduler } from './scheduler.js';
 import { DiscordRequest } from './utils.js';
 import { formatMemberTableMessages } from './member-table.js';
 import { formatManilaTimestamp } from './timestamps.js';
+import { readGuildFundData, updateGuildFundData } from './guild-fund-store.js';
+import {
+  formatGuildFundInfoMessage,
+  formatGuildFundMessage,
+  getGuildFundAnnouncement,
+  migrateLegacyGuildFunds,
+  updateGuildFund,
+} from './guild-fund.js';
 
 for (const variable of ['APP_ID', 'DISCORD_TOKEN', 'PUBLIC_KEY']) {
   if (!process.env[variable]) {
@@ -47,7 +55,16 @@ function getOption(options, name) {
 
 function getSubcommand(data) {
   const subcommand = data.options?.[0];
+  if (subcommand?.type === 2) {
+    const nestedSubcommand = subcommand.options?.[0];
+    return {
+      group: subcommand.name,
+      name: nestedSubcommand?.name,
+      options: nestedSubcommand?.options ?? [],
+    };
+  }
   return {
+    group: undefined,
     name: subcommand?.name,
     options: subcommand?.options ?? [],
   };
@@ -128,6 +145,17 @@ async function sendAdminMessages(res, body, messages) {
   }
 }
 
+async function sendEphemeralFollowup(body, content) {
+  await DiscordRequest(`webhooks/${process.env.APP_ID}/${body.token}`, {
+    method: 'POST',
+    body: {
+      content,
+      flags: EPHEMERAL,
+      allowed_mentions: { parse: [] },
+    },
+  });
+}
+
 async function sendAdminList(res, body, sessionDate, attendance) {
   return sendAdminMessages(res, body, splitAttendanceList(sessionDate, attendance));
 }
@@ -195,7 +223,7 @@ async function handleLate(body, res) {
 
 async function handleAdmin(body, res, data) {
   if (!requireGuild(body, res)) return;
-  const { name: subcommand, options } = getSubcommand(data);
+  const { group, name: subcommand, options } = getSubcommand(data);
   const guildId = body.guild_id;
   const actorId = getUserId(body);
   const current = await readData();
@@ -213,6 +241,7 @@ async function handleAdmin(body, res, data) {
     await updateData((store) => {
       const previous = store.guilds[guildId];
       store.guilds[guildId] = {
+        ...previous,
         channelId: body.channel_id,
         adminRoleIds: [adminRoleId],
         updatedAt: new Date().toISOString(),
@@ -233,11 +262,61 @@ async function handleAdmin(body, res, data) {
     return response(res, 'The bot has not been configured yet. Ask a server manager to run /war-admin setup.', true);
   }
 
+  if (group === 'fund') {
+    if (subcommand === 'channel') {
+      const channelId = getOption(options, 'channel');
+      const fund = await updateGuildFund(updateGuildFundData, guildId, { channelId });
+      return response(
+        res,
+        `Guild fund announcements will be sent to <#${fund.channelId}>.`,
+        true,
+      );
+    }
+
+    if (subcommand === 'ep' || subcommand === 'gold' || subcommand === 'php') {
+      const value = getOption(options, 'value');
+      const fund = await updateGuildFund(updateGuildFundData, guildId, {
+        [subcommand]: value,
+      });
+      if (!fund.channelId) {
+        return response(
+          res,
+          `${subcommand === 'ep' ? 'EP' : subcommand === 'gold' ? 'Gold' : 'PHP cash'} fund updated. Set an announcement channel with /war-admin fund channel to notify everyone.`,
+          true,
+        );
+      }
+
+      response(
+        res,
+        `Fund updated. Sending the latest values to <#${fund.channelId}>.`,
+        true,
+      );
+      try {
+        await DiscordRequest(`channels/${fund.channelId}/messages`, {
+          method: 'POST',
+          body: getGuildFundAnnouncement(fund),
+        });
+      } catch (error) {
+        console.error(`Guild fund updated, but announcement failed for guild ${guildId}:`, error);
+        try {
+          await sendEphemeralFollowup(
+            body,
+            `The fund was updated, but the announcement could not be sent to <#${fund.channelId}>. Check the bot's channel permissions.`,
+          );
+        } catch (followupError) {
+          console.error(`Could not report guild fund announcement failure for guild ${guildId}:`, followupError);
+        }
+      }
+      return;
+    }
+  }
+
   if (subcommand === 'settings') {
     const roles = settings.adminRoleIds.map((roleId) => `<@&${roleId}>`).join(', ') || 'None';
+    const fund = (await readGuildFundData()).guildFunds[guildId] ?? {};
     return response(
       res,
-      `**Club war bot settings**\nChannel: <#${settings.channelId}>\nAdmin roles: ${roles}\nSchedule: ${WAR_SCHEDULE_TEXT} ${BOT_CONFIG.timezone}\nAttendance: ${formatTime(BOT_CONFIG.attendanceStart)}–${formatTime(BOT_CONFIG.attendanceEnd)} ${BOT_CONFIG.timezone}`,
+      `**Club war bot settings**\nReminder channel: <#${settings.channelId}>\nAdmin roles: ${roles}\nSchedule: ${WAR_SCHEDULE_TEXT} ${BOT_CONFIG.timezone}\nAttendance: ${formatTime(BOT_CONFIG.attendanceStart)}–${formatTime(BOT_CONFIG.attendanceEnd)} ${BOT_CONFIG.timezone}\nFund announcement channel: ${fund.channelId ? `<#${fund.channelId}>` : 'Not set'}\nEP fund: ${fund.ep ?? 'Not set'}\nGold fund: ${fund.gold ?? 'Not set'}\nPHP cash fund: ${fund.php ?? 'Not set'}`,
       true,
     );
   }
@@ -363,6 +442,14 @@ app.post(
         const current = await readData();
         return response(res, getWarInfoMessage(current.guilds[req.body.guild_id]));
       }
+      if (data.name === 'guild-fund') {
+        if (!requireGuild(req.body, res)) return;
+        if (data.options?.some((option) => option.name === 'info')) {
+          return response(res, formatGuildFundInfoMessage());
+        }
+        const current = await readGuildFundData();
+        return response(res, formatGuildFundMessage(current.guildFunds[req.body.guild_id]));
+      }
       if (data.name === 'war-admin') return await handleAdmin(req.body, res, data);
       return response(res, `Unknown command: ${data.name}`, true);
     } catch (error) {
@@ -380,6 +467,8 @@ app.post(
     }
   },
 );
+
+await migrateLegacyGuildFunds(readData, updateData, updateGuildFundData);
 
 app.listen(PORT, () => {
   console.log('Listening on port', PORT);

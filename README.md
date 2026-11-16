@@ -12,10 +12,11 @@ This Discord bot sends club-war reminders and records attendance for wars held e
 - Lets members use `/late date:MM-DD-YYYY` to privately report in advance that they will be late for a scheduled war. Each member is listed once per war date, and authorized admins can review reports with `/war-admin late date:MM-DD-YYYY`. Today and future war dates are accepted.
 - Provides `/war-info` to show member and admin commands, the weekly schedule, attendance window, reminder times, and this server's configured channel and admin roles.
 - Reminder messages use bold emphasis and blank lines between sections for readability.
-- Posts an ordered, four-pair-per-row attendee table after the 9:30 PM close announcement to keep the roster compact. Names are shown without pinging attendees, and long lists are split into multiple messages.
+- At 9:00 PM, posts the current attendance list and reminds members they have 30 minutes to use `/attended` before attendance closes at 9:30 PM. With the 9:30 PM close announcement, posts the final attendee list including any check-ins recorded during that last 30 minutes. Names are shown without pinging attendees, and long lists are split into multiple messages.
 - Provides `/war-admin` commands to configure the reminder channel and admin roles, view attendance, and manually add a member to a scheduled session. All slash commands can be used in any server channel; scheduled reminders go to the configured reminder channel.
+- Provides `/guild-fund` for everyone to view the current EP (E-Points), Gold, and PHP (cash) balances. Authorized admins can update each string value with `/war-admin fund ep`, `/war-admin fund gold`, or `/war-admin fund php`, and set the `@everyone` update channel with `/war-admin fund channel`.
 
-Schedule defaults and reminder text are centralized in [config.js](./config.js). The bot's server settings and attendance history are stored in `data/club-war-data.json`, which is ignored by Git. Keep a backup of this file if attendance history matters. The bot assumes one running process and a computer with durable project storage.
+Schedule defaults and reminder text are centralized in [config.js](./config.js). Server settings, attendance, and late reports are stored in `data/club-war-data.json`; guild fund values and their announcement channel are stored separately per server in `data/guild-fund-data.json`. Both files are ignored by Git. Keep backups of these files if the data matters. The bot assumes one running process and a computer with durable project storage.
 
 ## Run locally
 
@@ -147,8 +148,12 @@ PM2 keeps processes running after you close Terminal, but your Mac must remain p
 - `/war-admin attendance date:MM-DD-YYYY` — view a scheduled session's attendance (for example, `11-16-2026`).
 - `/war-admin late date:MM-DD-YYYY` — view members who reported they will be late for a scheduled war date (past or future).
 - `/war-admin add-attendance member:@member date:MM-DD-YYYY` — add a member to any scheduled war date, including a past session. Duplicate entries are reported and not added again.
+- `/guild-fund view` — publicly show the current guild EP, Gold, and PHP cash funds (`/guild-fund` without a subcommand also displays them where supported).
+- `/guild-fund info` — show all guild fund commands, including admin-only commands.
+- `/war-admin fund ep value:<text>`, `/war-admin fund gold value:<text>`, and `/war-admin fund php value:<text>` — update a fund value. If an announcement channel is configured, the bot posts all latest balances and mentions `@everyone`.
+- `/war-admin fund channel channel:<channel>` — set the channel for guild fund announcements.
 
-Attendance and late-report lists are displayed in aligned, monospaced four-column tables, with each member numbered in order. Longer lists are split across multiple private replies.
+Attendance and late-report lists are displayed in aligned, monospaced single-column lists, with one numbered member per row. Longer lists are split across multiple private replies.
 
 All slash commands can be run in any server channel. Admin commands still require an authorized role, and initial setup requires Manage Server permission. The configured channel is used for scheduled reminders only. A server manager can rerun `/war-admin setup` in the desired reminder channel to change that channel and reset the initial admin role.
 

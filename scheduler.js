@@ -10,8 +10,7 @@ import { readData, updateData } from './store.js';
 import { formatManilaTimestamp } from './timestamps.js';
 import { DiscordRequest } from './utils.js';
 
-const ROSTER_COLUMN_COUNT = 4;
-const ROSTER_TABLE_HEADER = `${'| # | Member '.repeat(ROSTER_COLUMN_COUNT)}|\n${'|---:|---'.repeat(ROSTER_COLUMN_COUNT)}|`;
+const ROSTER_TABLE_HEADER = '| # | Member |\n|---:|---|';
 const MAX_ROSTER_MESSAGE_LENGTH = 1800;
 
 export function getScheduledEvents(parts) {
@@ -20,6 +19,13 @@ export function getScheduledEvents(parts) {
     ...(isWarDay
       ? [
           ...BOT_CONFIG.reminders,
+          {
+            key: 'attendance_roster_2100',
+            hour: BOT_CONFIG.warEnd.hour,
+            minute: BOT_CONFIG.warEnd.minute,
+            roster: true,
+            rosterTitle: `Attendance recorded so far for ${formatWarDate(parts.date)}:`,
+          },
           {
             key: 'attendance_closed',
             hour: BOT_CONFIG.attendanceEnd.hour,
@@ -32,6 +38,7 @@ export function getScheduledEvents(parts) {
             hour: BOT_CONFIG.attendanceEnd.hour,
             minute: BOT_CONFIG.attendanceEnd.minute,
             roster: true,
+            rosterTitle: `Final attendance for ${formatWarDate(parts.date)}:`,
           },
         ]
       : [
@@ -48,23 +55,23 @@ export function getScheduledEvents(parts) {
   });
 }
 
-export function formatAttendanceRosterMessages(date, records) {
-  const title = `Attendance for ${formatWarDate(date)}:`;
+export function formatAttendanceRosterMessages(
+  date,
+  records,
+  title = `Attendance for ${formatWarDate(date)}:`,
+) {
   if (records.length === 0) {
-    return [`${title}\n${ROSTER_TABLE_HEADER}\n| - | No attendance recorded for this session. |  |  |  |  |  |  |`];
+    return [`${title}\n${ROSTER_TABLE_HEADER}\n| - | No attendance recorded for this session. |`];
   }
 
   const rows = [];
-  for (let index = 0; index < records.length; index += ROSTER_COLUMN_COUNT) {
-    const cells = records.slice(index, index + ROSTER_COLUMN_COUNT).flatMap((record, offset) => [
-      String(index + offset + 1),
+  records.forEach((record, index) => {
+    const member =
       `${record.displayName} (recorded ${record.recordedAt ? formatManilaTimestamp(record.recordedAt) : 'time unavailable'})`
         .replace(/[\r\n]/g, ' ')
-        .replace(/\|/g, '\\|'),
-    ]);
-    while (cells.length < ROSTER_COLUMN_COUNT * 2) cells.push('');
-    rows.push(`| ${cells.join(' | ')} |`);
-  }
+        .replace(/\|/g, '\\|');
+    rows.push(`| ${index + 1} | ${member} |`);
+  });
 
   const chunks = [];
   const header = `${title}\n${ROSTER_TABLE_HEADER}`;
@@ -89,7 +96,11 @@ async function postEvent(guildId, channelId, date, event) {
     const records = data.attendance
       .filter((record) => record.guildId === guildId && record.sessionDate === date)
       .sort((left, right) => left.displayName.localeCompare(right.displayName));
-    for (const content of formatAttendanceRosterMessages(date, records)) {
+    for (const content of formatAttendanceRosterMessages(
+      date,
+      records,
+      event.rosterTitle,
+    )) {
       await DiscordRequest(`channels/${channelId}/messages`, {
         method: 'POST',
         body: { content, allowed_mentions: { parse: [] } },

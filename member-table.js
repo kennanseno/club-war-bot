@@ -1,5 +1,4 @@
 const MAX_MESSAGE_LENGTH = 1800;
-const COLUMN_COUNT = 4;
 
 function escapeTableCell(value) {
   return value
@@ -9,19 +8,11 @@ function escapeTableCell(value) {
 }
 
 function formatRows(members) {
-  const rows = [];
-  for (let index = 0; index < members.length; index += COLUMN_COUNT) {
-    const cells = members
-      .slice(index, index + COLUMN_COUNT)
-      .map((member, offset) => `${index + offset + 1}. ${escapeTableCell(member)}`);
-    while (cells.length < COLUMN_COUNT) cells.push('');
-    rows.push(cells);
-  }
-  return rows;
+  return members.map((member, index) => [`${index + 1}. ${escapeTableCell(member)}`]);
 }
 
 function formatTable(rows) {
-  const widths = Array(COLUMN_COUNT).fill(0);
+  const widths = [0];
   for (const row of rows) {
     row.forEach((cell, index) => {
       widths[index] = Math.max(widths[index], cell.length);

@@ -76,6 +76,69 @@ const ADMIN_SUBCOMMANDS = [
       },
     ],
   },
+  {
+    type: 2,
+    name: 'fund',
+    description: 'Manage the guild fund values and announcement channel',
+    options: [
+      {
+        type: 1,
+        name: 'ep',
+        description: 'Update the guild E-Points fund',
+        options: [
+          {
+            type: 3,
+            name: 'value',
+            description: 'Current E-Points fund value',
+            required: true,
+            max_length: 500,
+          },
+        ],
+      },
+      {
+        type: 1,
+        name: 'gold',
+        description: 'Update the guild Gold fund',
+        options: [
+          {
+            type: 3,
+            name: 'value',
+            description: 'Current Gold fund value',
+            required: true,
+            max_length: 500,
+          },
+        ],
+      },
+      {
+        type: 1,
+        name: 'php',
+        description: 'Update the guild PHP cash fund',
+        options: [
+          {
+            type: 3,
+            name: 'value',
+            description: 'Current PHP cash fund value',
+            required: true,
+            max_length: 500,
+          },
+        ],
+      },
+      {
+        type: 1,
+        name: 'channel',
+        description: 'Set the channel for guild fund announcements',
+        options: [
+          {
+            type: 7,
+            name: 'channel',
+            description: 'Channel where fund updates are announced',
+            required: true,
+            channel_types: [0, 5],
+          },
+        ],
+      },
+    ],
+  },
 ];
 
 const ALL_COMMANDS = [
@@ -105,6 +168,25 @@ const ALL_COMMANDS = [
     name: 'war-info',
     description: 'Show attendance commands, admin commands, and the war schedule',
     type: 1,
+    integration_types: [0],
+    contexts: [0],
+  },
+  {
+    name: 'guild-fund',
+    description: 'Show the guild fund or guild fund commands',
+    type: 1,
+    options: [
+      {
+        type: 1,
+        name: 'view',
+        description: 'Show the current guild EP, Gold, and PHP funds',
+      },
+      {
+        type: 1,
+        name: 'info',
+        description: 'Show public and admin guild fund commands',
+      },
+    ],
     integration_types: [0],
     contexts: [0],
   },

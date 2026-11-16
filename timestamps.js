@@ -29,7 +29,7 @@ export function formatManilaTimestamp(timestamp) {
       Number(hour) < 24 &&
       Number(minute) < 60
     ) {
-      return `${year}-${month}-${day} ${hour}:${minute}`;
+      return `${month}-${day}-${year} ${hour}:${minute}`;
     }
   }
 
@@ -42,5 +42,5 @@ export function formatManilaTimestamp(timestamp) {
       .formatToParts(date)
       .map(({ type, value }) => [type, value]),
   );
-  return `${parts.year}-${parts.month}-${parts.day} ${parts.hour}:${parts.minute}`;
+  return `${parts.month}-${parts.day}-${parts.year} ${parts.hour}:${parts.minute}`;
 }

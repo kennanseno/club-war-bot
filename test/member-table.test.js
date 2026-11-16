@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { formatMemberTableMessages } from '../member-table.js';
 
-test('member lists are numbered and aligned in monospaced four-column tables', () => {
+test('member lists are numbered one per row in an aligned monospaced table', () => {
   const [message] = formatMemberTableMessages(
     'Attendance for 2026-11-16 (5 members):',
     ['Alex', 'Jamie (added by admin)', 'Sam', 'Taylor', 'Uma'],
@@ -10,8 +10,11 @@ test('member lists are numbered and aligned in monospaced four-column tables', (
   );
 
   assert.match(message, /```[\s\S]*```/);
-  assert.match(message, /\| 1\. Alex\s+\| 2\. Jamie \(added by admin\)\s+\| 3\. Sam\s+\| 4\. Taylor\s+\|/);
-  assert.match(message, /\| 5\. Uma\s+\| {0,}\| {0,}\| {0,}\|/);
+  assert.match(message, /\| 1\. Alex\s+\|/);
+  assert.match(message, /\| 2\. Jamie \(added by admin\)\s+\|/);
+  assert.match(message, /\| 3\. Sam\s+\|/);
+  assert.match(message, /\| 4\. Taylor\s+\|/);
+  assert.match(message, /\| 5\. Uma\s+\|/);
 
   const tableLines = message.split('\n').slice(2, -1);
   const columnBoundaries = tableLines.map((line) =>
@@ -46,7 +49,7 @@ test('long member tables split below Discord message limits and repeat headings'
   for (const message of messages) {
     assert.ok(message.length <= 1800);
     assert.match(message, /```[\s\S]*```/);
-    assert.match(message, /\d+\. Member/);
+    assert.match(message, /\|\s+\d+\. Member/);
   }
   for (const member of members) assert.ok(messages.some((message) => message.includes(member)));
 });
