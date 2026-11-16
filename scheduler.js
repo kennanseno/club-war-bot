@@ -7,11 +7,8 @@ import {
 } from './config.js';
 import { formatWarDate, getManilaParts } from './schedule.js';
 import { readData, updateData } from './store.js';
-import { formatManilaTimestamp } from './timestamps.js';
+import { formatAttendanceListMessages } from './attendance-lists.js';
 import { DiscordRequest } from './utils.js';
-
-const ROSTER_TABLE_HEADER = '| # | Member |\n|---:|---|';
-const MAX_ROSTER_MESSAGE_LENGTH = 1800;
 
 export function getScheduledEvents(parts) {
   const isWarDay = BOT_CONFIG.warWeekdays.includes(parts.weekday);
@@ -60,42 +57,19 @@ export function formatAttendanceRosterMessages(
   records,
   title = `Attendance for ${formatWarDate(date)}:`,
 ) {
-  if (records.length === 0) {
-    return [`${title}\n${ROSTER_TABLE_HEADER}\n| - | No attendance recorded for this session. |`];
-  }
-
-  const rows = [];
-  records.forEach((record, index) => {
-    const member =
-      `${record.displayName} (recorded ${record.recordedAt ? formatManilaTimestamp(record.recordedAt) : 'time unavailable'})`
-        .replace(/[\r\n]/g, ' ')
-        .replace(/\|/g, '\\|');
-    rows.push(`| ${index + 1} | ${member} |`);
-  });
-
-  const chunks = [];
-  const header = `${title}\n${ROSTER_TABLE_HEADER}`;
-  let message = header;
-
-  for (const row of rows) {
-    const nextMessage = `${message}\n${row}`;
-    if (nextMessage.length > MAX_ROSTER_MESSAGE_LENGTH && message !== header) {
-      chunks.push(message);
-      message = `${title} (continued)\n${ROSTER_TABLE_HEADER}\n${row}`;
-    } else {
-      message = nextMessage;
-    }
-  }
-  chunks.push(message);
-  return chunks;
+  return formatAttendanceListMessages(
+    date,
+    records,
+    title,
+    'No attendance recorded for this session.',
+  );
 }
 
 async function postEvent(guildId, channelId, date, event) {
   if (event.roster) {
     const data = await readData();
     const records = data.attendance
-      .filter((record) => record.guildId === guildId && record.sessionDate === date)
-      .sort((left, right) => left.displayName.localeCompare(right.displayName));
+      .filter((record) => record.guildId === guildId && record.sessionDate === date);
     for (const content of formatAttendanceRosterMessages(
       date,
       records,

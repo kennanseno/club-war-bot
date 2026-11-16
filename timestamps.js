@@ -44,3 +44,44 @@ export function formatManilaTimestamp(timestamp) {
   );
   return `${parts.month}-${parts.day}-${parts.year} ${parts.hour}:${parts.minute}`;
 }
+
+function getTimestampOrderValue(timestamp) {
+  const localMatch = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(timestamp);
+  if (localMatch) {
+    const [, yearText, monthText, dayText, hourText, minuteText] = localMatch;
+    const year = Number(yearText);
+    const month = Number(monthText);
+    const day = Number(dayText);
+    const hour = Number(hourText);
+    const minute = Number(minuteText);
+    const date = new Date(Date.UTC(year, month - 1, day));
+    if (
+      date.getUTCFullYear() !== year ||
+      date.getUTCMonth() !== month - 1 ||
+      date.getUTCDate() !== day ||
+      hour >= 24 ||
+      minute >= 60
+    ) {
+      throw new Error(`Invalid recorded timestamp: ${timestamp}`);
+    }
+    return Date.UTC(year, month - 1, day, hour - 8, minute);
+  }
+
+  const orderValue = Date.parse(timestamp);
+  if (Number.isNaN(orderValue)) {
+    throw new Error(`Invalid recorded timestamp: ${timestamp}`);
+  }
+  return orderValue;
+}
+
+export function sortByRecordedAt(records) {
+  return [...records].sort((left, right) => {
+    const leftOrder = left.recordedAt
+      ? getTimestampOrderValue(left.recordedAt)
+      : Number.POSITIVE_INFINITY;
+    const rightOrder = right.recordedAt
+      ? getTimestampOrderValue(right.recordedAt)
+      : Number.POSITIVE_INFINITY;
+    return leftOrder - rightOrder;
+  });
+}

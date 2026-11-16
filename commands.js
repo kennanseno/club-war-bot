@@ -44,8 +44,8 @@ const ADMIN_SUBCOMMANDS = [
       {
         type: 3,
         name: 'date',
-        description: 'Session date as MM-DD-YYYY, e.g. 11-16-2026',
-        required: true,
+        description: 'Session date as MM-DD-YYYY; defaults to the latest war date',
+        required: false,
       },
     ],
   },
@@ -57,8 +57,8 @@ const ADMIN_SUBCOMMANDS = [
       {
         type: 3,
         name: 'date',
-        description: 'Scheduled war date as MM-DD-YYYY, e.g. 11-16-2026',
-        required: true,
+        description: 'Scheduled war date as MM-DD-YYYY; defaults to the latest war date',
+        required: false,
       },
     ],
   },

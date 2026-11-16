@@ -21,14 +21,17 @@ import {
   getAttendanceMessage,
   getAttendanceStatus,
   formatWarDate,
+  getMostRecentWarDate,
   parseUpcomingWarDateInput,
   parseWarDateInput,
 } from './schedule.js';
+import {
+  formatAttendanceListMessages,
+  formatLateListMessages,
+} from './attendance-lists.js';
 import { readData, updateData } from './store.js';
 import { startScheduler } from './scheduler.js';
 import { DiscordRequest } from './utils.js';
-import { formatMemberTableMessages } from './member-table.js';
-import { formatManilaTimestamp } from './timestamps.js';
 import { readGuildFundData, updateGuildFundData } from './guild-fund-store.js';
 import {
   formatGuildFundInfoMessage,
@@ -121,18 +124,22 @@ function requireGuild(body, res) {
   return true;
 }
 
-function splitAttendanceList(sessionDate, attendance) {
-  const formattedDate = formatWarDate(sessionDate);
-  const header = `Attendance for ${formattedDate} (${attendance.length} member${attendance.length === 1 ? '' : 's'}):`;
-  const members = attendance.map(
-    (record) =>
-      `${record.displayName}${record.source === 'admin' ? ' (added by admin)' : ''} (recorded ${record.recordedAt ? formatManilaTimestamp(record.recordedAt) : 'time unavailable'})`,
-  );
-  return formatMemberTableMessages(header, members, 'No attendance recorded.');
-}
-
 async function sendAdminMessages(res, body, messages) {
   response(res, messages[0], true);
+  for (const content of messages.slice(1)) {
+    await DiscordRequest(`webhooks/${process.env.APP_ID}/${body.token}`, {
+      method: 'POST',
+      body: {
+        content,
+        flags: EPHEMERAL,
+        allowed_mentions: { parse: [] },
+      },
+    });
+  }
+}
+
+async function sendEphemeralList(res, body, confirmation, messages) {
+  response(res, `${confirmation}\n\n${messages[0]}`, true);
   for (const content of messages.slice(1)) {
     await DiscordRequest(`webhooks/${process.env.APP_ID}/${body.token}`, {
       method: 'POST',
@@ -157,7 +164,11 @@ async function sendEphemeralFollowup(body, content) {
 }
 
 async function sendAdminList(res, body, sessionDate, attendance) {
-  return sendAdminMessages(res, body, splitAttendanceList(sessionDate, attendance));
+  return sendAdminMessages(
+    res,
+    body,
+    formatAttendanceListMessages(sessionDate, attendance),
+  );
 }
 
 async function handleAttended(body, res) {
@@ -181,12 +192,19 @@ async function handleAttended(body, res) {
     displayName,
   });
 
-  return response(
+  const current = await readData();
+  const attendance = current.attendance
+    .filter(
+      (record) =>
+        record.guildId === guildId && record.sessionDate === status.sessionDate,
+    );
+  return sendEphemeralList(
     res,
+    body,
     result === 'duplicate'
       ? `Your attendance for ${formatWarDate(status.sessionDate)} is already recorded.`
       : getAttendanceMessage(status),
-    true,
+    formatAttendanceListMessages(status.sessionDate, attendance),
   );
 }
 
@@ -212,12 +230,19 @@ async function handleLate(body, res) {
     userId,
     displayName: getUserName(body),
   });
-  return response(
+  const current = await readData();
+  const lateReports = current.lateReports
+    .filter(
+      (record) =>
+        record.guildId === body.guild_id && record.sessionDate === sessionDate,
+    );
+  return sendEphemeralList(
     res,
+    body,
     result === 'duplicate'
       ? `Your late notice for ${formatWarDate(sessionDate)} is already recorded. An admin can view it with /war-admin late date:${getOption(body.data.options, 'date')}.`
       : `Your late notice for the ${formatWarDate(sessionDate)} war is recorded. An admin can view it with /war-admin late date:${getOption(body.data.options, 'date')}.`,
-    true,
+    formatLateListMessages(sessionDate, lateReports),
   );
 }
 
@@ -349,18 +374,23 @@ async function handleAdmin(body, res, data) {
   }
 
   if (subcommand === 'attendance') {
-    const sessionDate = parseWarDateInput(getOption(options, 'date'));
+    const dateInput = getOption(options, 'date');
+    const sessionDate = dateInput === undefined
+      ? getMostRecentWarDate()
+      : parseWarDateInput(dateInput);
     if (!sessionDate) {
       return response(res, 'That is not a valid scheduled war date. Enter a real Monday, Wednesday, or Saturday date in MM-DD-YYYY format, for example 11-16-2026.', true);
     }
     const attendance = current.attendance
-      .filter((record) => record.guildId === guildId && record.sessionDate === sessionDate)
-      .sort((left, right) => left.displayName.localeCompare(right.displayName));
+      .filter((record) => record.guildId === guildId && record.sessionDate === sessionDate);
     return sendAdminList(res, body, sessionDate, attendance);
   }
 
   if (subcommand === 'late') {
-    const sessionDate = parseWarDateInput(getOption(options, 'date'));
+    const dateInput = getOption(options, 'date');
+    const sessionDate = dateInput === undefined
+      ? getMostRecentWarDate()
+      : parseWarDateInput(dateInput);
     if (!sessionDate) {
       return response(
         res,
@@ -369,22 +399,11 @@ async function handleAdmin(body, res, data) {
       );
     }
     const lateReports = current.lateReports
-      .filter((record) => record.guildId === guildId && record.sessionDate === sessionDate)
-      .sort((left, right) => left.displayName.localeCompare(right.displayName));
-    const members = lateReports.map(
-      (record) =>
-        `${record.displayName} (reported ${record.recordedAt ? formatManilaTimestamp(record.recordedAt) : 'time unavailable'})`,
-    );
-    const formattedDate = formatWarDate(sessionDate);
-    const header = `Late notices for ${formattedDate} (${members.length} member${members.length === 1 ? '' : 's'}):`;
+      .filter((record) => record.guildId === guildId && record.sessionDate === sessionDate);
     return sendAdminMessages(
       res,
       body,
-      formatMemberTableMessages(
-        header,
-        members,
-        `No members have reported that they will be late for the ${formattedDate} war.`,
-      ),
+      formatLateListMessages(sessionDate, lateReports),
     );
   }
 

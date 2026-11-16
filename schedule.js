@@ -80,6 +80,24 @@ export function parseUpcomingWarDateInput(value, now = new Date()) {
   return sessionDate >= getManilaParts(now).date ? sessionDate : null;
 }
 
+export function getMostRecentWarDate(now = new Date()) {
+  const parts = getManilaParts(now);
+  for (let daysAgo = 0; daysAgo < 7; daysAgo += 1) {
+    const weekday = (parts.weekday - daysAgo + 7) % 7;
+    if (!BOT_CONFIG.warWeekdays.includes(weekday)) continue;
+
+    const date = new Date(
+      Date.UTC(parts.year, parts.month - 1, parts.day - daysAgo),
+    );
+    return [
+      date.getUTCFullYear(),
+      String(date.getUTCMonth() + 1).padStart(2, '0'),
+      String(date.getUTCDate()).padStart(2, '0'),
+    ].join('-');
+  }
+  throw new Error('War schedule has no war weekdays');
+}
+
 export function formatWarDate(date) {
   const parsed = parseDate(date);
   if (!parsed) throw new Error(`Invalid date: ${date}`);
