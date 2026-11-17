@@ -29,7 +29,7 @@ export function formatTime({ hour, minute }) {
 }
 
 export const BOT_USAGE_TEXT =
-  `**Attendance:** Members use \`/attended\` from ${formatTime(ATTENDANCE_START)} until ${formatTime(ATTENDANCE_END)} on war nights.\n\n**Late notice:** Use \`/late [date:MM-DD-YYYY]\` to notify admins in advance. The date defaults to today on war days or the next war date otherwise.\n\n**Guild fund:** Use \`/guild-fund view\` to see current EP, Gold, and PHP cash; use \`/guild-fund info\` for all fund commands.\n\n**Admins:** Use \`/war-admin\` for setup, settings, attendance (\`/war-admin attendance [date:MM-DD-YYYY]\`) and the late list (\`/war-admin late [date:MM-DD-YYYY]\`). Both default to today on war days or the latest war date otherwise. Fund updates: \`/war-admin fund ep value:<text>\`, \`/war-admin fund gold value:<text>\`, \`/war-admin fund php value:<text>\`; set the announcement channel with \`/war-admin fund channel channel:<channel>\`.`;
+  `**Attendance:** Members use \`/attended\` from ${formatTime(ATTENDANCE_START)} until ${formatTime(ATTENDANCE_END)} on war nights.\n\n**Running late?** Use \`/late [date:MM-DD-YYYY]\`; the date defaults to today on war days or the next war date otherwise.`;
 
 export const BOT_INFO_REMINDER = '**Need help with the bot commands? Use `/war-info`.**';
 
@@ -37,7 +37,7 @@ export const NON_WAR_USAGE_TEXT =
   `**Attendance:** On war days, use \`/attended\` from ${formatTime(ATTENDANCE_START)} until ${formatTime(ATTENDANCE_END)} to record that you joined the war. It helps track participation and your war salary.\n\n**Late notice:** Use \`/late [date:MM-DD-YYYY]\` when you expect to arrive late for a war. This records that you are still joining and helps the guild keep you instead of kicking you offline at 7:40 PM.\n\n**Why use them:** \`/attended\` records participation after you join, while \`/late\` lets the guild know you are coming later.`;
 
 export const REMINDER_IMPORTANT_TEXT =
-  `**Club war:** ${formatTime(WAR_START)}–${formatTime(WAR_END)} Manila time.\n\n**Regroup:** ${formatTime(REGROUP_START)}–${formatTime(REGROUP_END)} Manila time.\n\n**Offline guild members will be kicked at 7:40 PM.**\n\n**Running late for a war? Use \`/late\` and optionally choose a date. Without one, it defaults to today if today is a war day, or the next war date.**`;
+  `**Club war:** ${formatTime(WAR_START)}–${formatTime(WAR_END)} Manila time.\n\n**Regroup:** ${formatTime(REGROUP_START)}–${formatTime(REGROUP_END)} Manila time.\n\n**Offline guild members will be kicked at 7:40 PM.**`;
 
 const reminderDetails = `${REMINDER_IMPORTANT_TEXT}\n\n${BOT_USAGE_TEXT}\n\n${BOT_INFO_REMINDER}`;
 

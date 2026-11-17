@@ -210,15 +210,14 @@ test('all war-day announcements include the regroup, kick-off, and late notice',
     assert.ok(event.message.endsWith('**Need help with the bot commands? Use `/war-info`.**'));
     assert.match(event.message, /Regroup.*7:00 PM–8:00 PM/s);
     assert.match(event.message, /kicked at 7:40 PM/);
-    assert.match(event.message, /Running late for a war\? Use `\/late` and optionally choose a date/);
+    assert.match(event.message, /\*\*Running late\?\*\* Use `\/late \[date:MM-DD-YYYY\]`/);
     assert.match(event.message, /\*\*Attendance:\*\* Members use `\/attended` from 7:30 PM until 9:30 PM/);
-    assert.match(event.message, /\*\*Admins:\*\* Use `\/war-admin`/);
+    assert.doesNotMatch(event.message, /Guild fund:|\/guild-fund|\/war-admin/);
     if (time === '2026-11-16T13:30:00Z') {
       assert.match(event.message, /Need help with the bot commands\? Use `\/war-info`/);
     }
     assert.match(event.message, /\*\*Regroup/);
     assert.match(event.message, /\*\*Offline guild members will be kicked/);
-    assert.match(event.message, /\*\*Running late for a war\?/);
     assert.match(event.message, /\n\n\*\*Club war:/);
     assert.match(event.message, /\n\n\*\*Attendance:/);
   }
