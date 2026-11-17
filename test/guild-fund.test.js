@@ -78,6 +78,36 @@ test('guild fund announcement explicitly allows only the intended everyone ping'
   );
 });
 
+test('gold fund announcements use a catchy gold-specific update', () => {
+  assert.deepEqual(
+    getGuildFundAnnouncement(
+      { ep: '500 EP', gold: '1,000', php: '₱250' },
+      'gold',
+    ),
+    {
+      content: '@everyone\n**Gold fund update!**\nThe guild Gold fund just got a fresh update. Here is the latest guild stash:\n\n**Guild Fund**\n**EP (E-Points):** 500 EP\n**Gold:** 1,000\n**PHP (Cash):** ₱250',
+      allowed_mentions: { parse: ['everyone'] },
+    },
+  );
+});
+
+test('EP and PHP fund announcements use catchy fund-specific updates', () => {
+  assert.match(
+    getGuildFundAnnouncement(
+      { ep: '500 EP', gold: '1,000', php: '₱250' },
+      'ep',
+    ).content,
+    /^@everyone\n\*\*EP fund update!\*\*\nE-Points just got a fresh boost/,
+  );
+  assert.match(
+    getGuildFundAnnouncement(
+      { ep: '500 EP', gold: '1,000', php: '₱250' },
+      'php',
+    ).content,
+    /^@everyone\n\*\*PHP cash fund update!\*\*\nThe guild cash balance just got a fresh update/,
+  );
+});
+
 test('legacy guild funds migrate to their own store without overwriting newer values', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'club-war-guild-fund-migration-'));
   try {

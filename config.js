@@ -9,6 +9,8 @@ const WEEKDAY_NAMES = Object.freeze([
 ]);
 
 const WAR_WEEKDAYS = Object.freeze([1, 3, 6]);
+const REGROUP_START = Object.freeze({ hour: 19, minute: 0 });
+const REGROUP_END = Object.freeze({ hour: 20, minute: 0 });
 const ATTENDANCE_START = Object.freeze({ hour: 19, minute: 30 });
 const WAR_START = Object.freeze({ hour: 20, minute: 0 });
 const WAR_END = Object.freeze({ hour: 21, minute: 0 });
@@ -31,8 +33,11 @@ export const BOT_USAGE_TEXT =
 
 export const BOT_INFO_REMINDER = '**Need help with the bot commands? Use `/war-info`.**';
 
+export const NON_WAR_USAGE_TEXT =
+  `**Attendance:** On war days, use \`/attended\` from ${formatTime(ATTENDANCE_START)} until ${formatTime(ATTENDANCE_END)} to record that you joined the war. It helps track participation and your war salary.\n\n**Late notice:** Use \`/late [date:MM-DD-YYYY]\` when you expect to arrive late for a war. This records that you are still joining and helps the guild keep you instead of kicking you offline at 7:40 PM.\n\n**Why use them:** \`/attended\` records participation after you join, while \`/late\` lets the guild know you are coming later.`;
+
 export const REMINDER_IMPORTANT_TEXT =
-  `**Club war:** ${formatTime(WAR_START)}–${formatTime(WAR_END)} Manila time.\n\n**Regroup:** ${formatTime(ATTENDANCE_START)}.\n\n**Offline guild members will be kicked at 7:40 PM.**\n\n**Running late for a war? Use \`/late\` and optionally choose a date. Without one, it defaults to today if today is a war day, or the next war date.**`;
+  `**Club war:** ${formatTime(WAR_START)}–${formatTime(WAR_END)} Manila time.\n\n**Regroup:** ${formatTime(REGROUP_START)}–${formatTime(REGROUP_END)} Manila time.\n\n**Offline guild members will be kicked at 7:40 PM.**\n\n**Running late for a war? Use \`/late\` and optionally choose a date. Without one, it defaults to today if today is a war day, or the next war date.**`;
 
 const reminderDetails = `${REMINDER_IMPORTANT_TEXT}\n\n${BOT_USAGE_TEXT}\n\n${BOT_INFO_REMINDER}`;
 
@@ -41,6 +46,8 @@ export const BOT_CONFIG = Object.freeze({
   warWeekdays: WAR_WEEKDAYS,
   warDayNames: WAR_DAY_NAMES,
   attendanceStart: ATTENDANCE_START,
+  regroupStart: REGROUP_START,
+  regroupEnd: REGROUP_END,
   warStart: WAR_START,
   warEnd: WAR_END,
   attendanceEnd: ATTENDANCE_END,
@@ -49,64 +56,64 @@ export const BOT_CONFIG = Object.freeze({
       key: 'war_day_1700',
       hour: 17,
       minute: 0,
-      message: `@everyone **Club war is tonight at ${formatTime(WAR_START)}—please start getting ready!**\n\n${reminderDetails}`,
+      message: `@everyone **Club war is tonight at ${formatTime(WAR_START)}—gear up, squad up, and get ready for the W!**\n\n${reminderDetails}`,
       everyone: true,
     }),
     Object.freeze({
       key: 'war_day_1800',
       hour: 18,
       minute: 0,
-      message: `@everyone **Club war is tonight at ${formatTime(WAR_START)}—start getting ready!**\n\n${reminderDetails}`,
+      message: `@everyone **Club war is tonight at ${formatTime(WAR_START)}—charge up, check your loadout, and prepare for the raid!**\n\n${reminderDetails}`,
       everyone: true,
     }),
     Object.freeze({
       key: 'regroup_1830',
       hour: 18,
       minute: 30,
-      message: `@everyone **Club war:** ${formatTime(WAR_START)}–${formatTime(WAR_END)} Manila time. **Regroup at ${formatTime(ATTENDANCE_START)}.**\n\n${reminderDetails}`,
+      message: `@everyone **Club war:** ${formatTime(WAR_START)}–${formatTime(WAR_END)} Manila time. **Regroup starts at ${formatTime(REGROUP_START)}—get squad-ready!**\n\n${reminderDetails}`,
       everyone: true,
     }),
     Object.freeze({
       key: 'regroup_1900',
       hour: 19,
       minute: 0,
-      message: `@everyone **Club war starts at ${formatTime(WAR_START)}. Please regroup at ${formatTime(ATTENDANCE_START)}!**\n\n${reminderDetails}`,
+      message: `@everyone **Regroup starts now: ${formatTime(REGROUP_START)}–${formatTime(REGROUP_END)} Manila time. Squad up and get ready—club war starts at ${formatTime(WAR_START)}!**\n\n${reminderDetails}`,
       everyone: true,
     }),
     Object.freeze({
       key: 'regroup_1930',
       hour: 19,
       minute: 30,
-      message: `@everyone **Regroup now! Attendance is open from ${formatTime(ATTENDANCE_START)} until ${formatTime(ATTENDANCE_END)}.**\n\n${reminderDetails}`,
+      message: `@everyone **Members can now use \`/attended\` to record their attendance for the war. Regroup continues until club war starts at ${formatTime(WAR_START)}. Attendance is open from ${formatTime(ATTENDANCE_START)} until ${formatTime(ATTENDANCE_END)}.**\n\n${reminderDetails}`,
       everyone: true,
     }),
     Object.freeze({
       key: 'late_kick_1940',
       hour: 19,
       minute: 40,
-      message: `@everyone **Offline members who have not reported that they will be late for tonight’s war are now being kicked to make room for others who want to join. Members who recorded a late notice for this war will be kept in the guild and not kicked.**\n\n${BOT_INFO_REMINDER}`,
+      message: `@everyone **Offline kick now. Late-notice members stay. Once you join, use \`/attended\` to record your attendance.**\n\n${BOT_INFO_REMINDER}`,
       everyone: true,
     }),
     Object.freeze({
       key: 'war_start_2000',
       hour: WAR_START.hour,
       minute: WAR_START.minute,
-      message: `@everyone **GLHF, everyone! Club war starts now—let's get that win!**\n\n**If you haven't used \`/attended\` yet, check in by ${formatTime(ATTENDANCE_END)} Manila time. No check-in means no salary for this war!**\n\n${BOT_INFO_REMINDER}`,
+      message: `@everyone **GLHF, everyone! Club war starts now—lock in and let's get that W!**\n\n**If you haven't used \`/attended\` yet, check in by ${formatTime(ATTENDANCE_END)} Manila time. No check-in means no salary for this war!**\n\n${BOT_INFO_REMINDER}`,
       everyone: true,
     }),
     Object.freeze({
       key: 'war_end_2100',
       hour: WAR_END.hour,
       minute: WAR_END.minute,
-      message: `@everyone **GG, everyone! Club war is over!**\n\n**You have 30 minutes left to use \`/attended\` and be recorded for this war. Attendance closes at ${formatTime(ATTENDANCE_END)} Manila time. No check-in means no salary for this war!**\n\n${BOT_INFO_REMINDER}`,
+      message: `@everyone **GG, everyone! Club war is over—good run, squad!**\n\n**You have 30 minutes left to use \`/attended\` and be recorded for this war. Attendance closes at ${formatTime(ATTENDANCE_END)} Manila time. No check-in means no salary for this war!**\n\n${BOT_INFO_REMINDER}`,
       everyone: true,
     }),
   ]),
   nonWarDayReminder: Object.freeze({
     key: 'non_war_day_schedule',
     hour: 19,
-    minute: 30,
-    message: `@everyone **No club war is scheduled for tonight.** The weekly schedule is ${warScheduleText} Manila time.\n\n${reminderDetails}`,
+    minute: 0,
+    message: `@everyone **No club war is scheduled for tonight.** The weekly schedule is ${warScheduleText} Manila time.\n\n${NON_WAR_USAGE_TEXT}\n\n${BOT_INFO_REMINDER}`,
   }),
 });
 
@@ -127,13 +134,13 @@ export function getWarInfoMessage(settings) {
     '**Club War Information**',
     `**Schedule:** ${WAR_SCHEDULE_TEXT} ${BOT_CONFIG.timezone}`,
     '**Commands:** All commands can be used in any server channel. Scheduled reminders are sent to the configured reminder channel.',
-    `**Regroup:** ${formatTime(BOT_CONFIG.attendanceStart)}; offline guild members are kicked at 7:40 PM.`,
+    `**Regroup:** ${formatTime(BOT_CONFIG.regroupStart)}–${formatTime(BOT_CONFIG.regroupEnd)} Manila time; offline guild members are kicked at 7:40 PM.`,
     `**Attendance:** Use \`/attended\` from ${formatTime(BOT_CONFIG.attendanceStart)} until ${formatTime(BOT_CONFIG.attendanceEnd)} on war days.`,
     '**Late notice:** Use `/late [date:MM-DD-YYYY]` to report you will be late. The date defaults to today on war days or the next war date otherwise.',
-    `**Reminders:** ${reminders} on war days; 7:30 PM on non-war days.`,
+    `**Reminders:** ${reminders} on war days; 7:00 PM on non-war days.`,
     '',
     '**Admin commands** (authorized admin role):',
-    '`/war-admin setup` — configure the channel and initial admin role.',
+    '`/war-admin setup war_channel:<channel> fund_channel:<channel> admin_role:<role>` — configure war reminders, fund announcements, and the initial admin role.',
     '`/war-admin settings` — view current bot settings.',
     '`/war-admin role-add` / `/war-admin role-remove` — manage authorized roles.',
     '`/war-admin fund ep value:<text>` — update the guild EP balance.',

@@ -37,7 +37,7 @@ export function getScheduledEvents(parts) {
             key: 'attendance_closed',
             hour: BOT_CONFIG.attendanceEnd.hour,
             minute: BOT_CONFIG.attendanceEnd.minute,
-            message: `@everyone **Attendance is now closed.** The war ran from ${formatTime(BOT_CONFIG.warStart)} to ${formatTime(BOT_CONFIG.warEnd)} Manila time.\n\n${REMINDER_IMPORTANT_TEXT}\n\n${BOT_USAGE_TEXT}\n\n${BOT_INFO_REMINDER}`,
+            message: `@everyone **Attendance is now closed. GG to the squad—participation is locked!** The war ran from ${formatTime(BOT_CONFIG.warStart)} to ${formatTime(BOT_CONFIG.warEnd)} Manila time.\n\n${REMINDER_IMPORTANT_TEXT}\n\n${BOT_USAGE_TEXT}\n\n${BOT_INFO_REMINDER}`,
             everyone: true,
           },
           {

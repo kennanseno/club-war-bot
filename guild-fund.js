@@ -19,9 +19,28 @@ export function formatGuildFundInfoMessage() {
   ].join('\n');
 }
 
-export function getGuildFundAnnouncement(settings) {
+export function getGuildFundAnnouncement(settings, updatedType) {
+  const announcements = {
+    ep: {
+      title: '**EP fund update!**',
+      detail: 'E-Points just got a fresh boost. Here is the latest guild stash:',
+    },
+    gold: {
+      title: '**Gold fund update!**',
+      detail: 'The guild Gold fund just got a fresh update. Here is the latest guild stash:',
+    },
+    php: {
+      title: '**PHP cash fund update!**',
+      detail: 'The guild cash balance just got a fresh update. Here is the latest guild stash:',
+    },
+  };
+  const announcement = updatedType ? announcements[updatedType] : null;
+
   return {
-    content: `@everyone\n${formatGuildFundMessage(settings)}`,
+    content:
+      announcement
+        ? `@everyone\n${announcement.title}\n${announcement.detail}\n\n${formatGuildFundMessage(settings)}`
+        : `@everyone\n${formatGuildFundMessage(settings)}`,
     allowed_mentions: { parse: ['everyone'] },
   };
 }

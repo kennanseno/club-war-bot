@@ -268,11 +268,20 @@ async function handleAdmin(body, res, data) {
   }
   if (subcommand === 'setup') {
     const adminRoleId = getOption(options, 'admin_role');
+    const warChannelId = getOption(options, 'war_channel');
+    const fundChannelId = getOption(options, 'fund_channel');
+    if (!warChannelId || !fundChannelId) {
+      return response(
+        res,
+        'Choose both a war reminder channel and a guild fund channel.',
+        true,
+      );
+    }
     await updateData((store) => {
       const previous = store.guilds[guildId];
       store.guilds[guildId] = {
         ...previous,
-        channelId: body.channel_id,
+        channelId: warChannelId,
         adminRoleIds: [adminRoleId],
         updatedAt: new Date().toISOString(),
         updatedBy: actorId,
@@ -281,9 +290,12 @@ async function handleAdmin(body, res, data) {
         store.guilds[guildId].adminRoleIds = previous.adminRoleIds;
       }
     });
+    await updateGuildFund(updateGuildFundData, guildId, {
+      channelId: fundChannelId,
+    });
     return response(
       res,
-      `Setup complete. Commands can be used in any server channel. Scheduled reminders will be sent in <#${body.channel_id}>. <@&${adminRoleId}> can manage bot settings and attendance. Use /war-admin settings to review the configuration.`,
+      `Setup complete. Commands can be used in any server channel. War reminders will be sent in <#${warChannelId}> and guild fund updates will be sent in <#${fundChannelId}>. <@&${adminRoleId}> can manage bot settings and attendance. Use /war-admin settings to review the configuration.`,
       true,
     );
   }
@@ -324,7 +336,7 @@ async function handleAdmin(body, res, data) {
       try {
         await DiscordRequest(`channels/${fund.channelId}/messages`, {
           method: 'POST',
-          body: getGuildFundAnnouncement(fund),
+          body: getGuildFundAnnouncement(fund, subcommand),
         });
       } catch (error) {
         console.error(`Guild fund updated, but announcement failed for guild ${guildId}:`, error);

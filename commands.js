@@ -5,8 +5,22 @@ const ADMIN_SUBCOMMANDS = [
   {
     type: 1,
     name: 'setup',
-    description: 'Set this channel and the initial admin role',
+    description: 'Configure reminder channels and the initial admin role',
     options: [
+      {
+        type: 7,
+        name: 'war_channel',
+        description: 'Channel where war reminders and attendance rosters are posted',
+        required: true,
+        channel_types: [0, 5],
+      },
+      {
+        type: 7,
+        name: 'fund_channel',
+        description: 'Channel where guild fund updates are announced',
+        required: true,
+        channel_types: [0, 5],
+      },
       {
         type: 8,
         name: 'admin_role',
