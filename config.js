@@ -81,6 +81,13 @@ export const BOT_CONFIG = Object.freeze({
       everyone: true,
     }),
     Object.freeze({
+      key: 'regroup_1915',
+      hour: 19,
+      minute: 15,
+      message: `@everyone **Regroup starts now: ${formatTime(REGROUP_START)}–${formatTime(REGROUP_END)} Manila time. Squad up and get ready—club war starts at ${formatTime(WAR_START)}!**\n\n${reminderDetails}`,
+      everyone: true,
+    }),
+    Object.freeze({
       key: 'regroup_1930',
       hour: 19,
       minute: 30,
@@ -106,6 +113,13 @@ export const BOT_CONFIG = Object.freeze({
       hour: WAR_END.hour,
       minute: WAR_END.minute,
       message: `@everyone **GG, everyone! Club war is over—good run, squad!**\n\n**You have 30 minutes left to use \`/attended\` and be recorded for this war. Attendance closes at ${formatTime(ATTENDANCE_END)} Manila time. No check-in means no salary for this war!**\n\n${BOT_INFO_REMINDER}`,
+      everyone: true,
+    }),
+    Object.freeze({
+      key: 'attendance_final_2115',
+      hour: 21,
+      minute: 15,
+      message: `@everyone **Final check: use \`/attended\` now to record your attendance before it closes at ${formatTime(ATTENDANCE_END)} Manila time. Don't miss the deadline!**\n\n${BOT_INFO_REMINDER}`,
       everyone: true,
     }),
   ]),

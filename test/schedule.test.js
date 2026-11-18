@@ -150,6 +150,20 @@ test('7 PM reminder says regroup starts at 7 PM', () => {
   assert.match(event.message, /club war starts at 8:00 PM/);
 });
 
+test('7:15 PM reminder repeats the regroup reminder', () => {
+  const event = getScheduledEvents(
+    getManilaParts(new Date('2026-11-16T11:15:00Z')),
+  ).find((item) => item.key === 'regroup_1915');
+
+  assert.ok(event);
+  assert.equal(event.everyone, true);
+  assert.match(
+    event.message,
+    /@everyone \*\*Regroup starts now: 7:00 PM–8:00 PM Manila time. Squad up and get ready/,
+  );
+  assert.match(event.message, /club war starts at 8:00 PM/);
+});
+
 test('7:30 PM reminder says regroup continues until war starts', () => {
   const event = getScheduledEvents(
     getManilaParts(new Date('2026-11-16T11:30:00Z')),
@@ -198,6 +212,7 @@ test('all war-day announcements include the regroup, kick-off, and late notice',
     '2026-11-16T10:00:00Z',
     '2026-11-16T10:30:00Z',
     '2026-11-16T11:00:00Z',
+    '2026-11-16T11:15:00Z',
     '2026-11-16T11:30:00Z',
     '2026-11-16T13:30:00Z',
   ];
@@ -221,6 +236,28 @@ test('all war-day announcements include the regroup, kick-off, and late notice',
     assert.match(event.message, /\n\n\*\*Club war:/);
     assert.match(event.message, /\n\n\*\*Attendance:/);
   }
+});
+
+test('9:15 PM reminder tells members to use attended before close', () => {
+  const event = getScheduledEvents(
+    getManilaParts(new Date('2026-11-16T13:15:00Z')),
+  ).find((item) => item.key === 'attendance_final_2115');
+
+  assert.ok(event);
+  assert.equal(event.everyone, true);
+  assert.match(
+    event.message,
+    /Final check: use `\/attended` now to record your attendance before it closes at 9:30 PM Manila time/,
+  );
+  assert.doesNotMatch(event.message, /PM PM/);
+  assert.ok(event.message.endsWith('**Need help with the bot commands? Use `/war-info`.**'));
+
+  const roster = getScheduledEvents(
+    getManilaParts(new Date('2026-11-16T13:15:00Z')),
+  ).find((item) => item.key === 'attendance_roster_2115');
+  assert.ok(roster);
+  assert.equal(roster.roster, true);
+  assert.equal(roster.rosterTitle, 'Attendance recorded so far for 11-16-2026:');
 });
 
 test('war-day start and end reminders run at 8 PM and 9 PM Manila time', () => {
@@ -310,7 +347,7 @@ test('war info shows commands, configured schedule, and server setup', () => {
   );
   assert.match(message, /<\#war-channel>/);
   assert.match(message, /<@&war-admin-role>/);
-  assert.match(message, /Reminders:\*\* 5:00 PM, 6:00 PM, 6:30 PM, 7:00 PM, 7:30 PM, 7:40 PM, 8:00 PM, 9:00 PM/);
+  assert.match(message, /Reminders:\*\* 5:00 PM, 6:00 PM, 6:30 PM, 7:00 PM, 7:15 PM, 7:30 PM, 7:40 PM, 8:00 PM, 9:00 PM, 9:15 PM/);
 });
 
 test('war info explains setup when the server is not configured', () => {

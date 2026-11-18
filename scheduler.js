@@ -34,6 +34,13 @@ export function getScheduledEvents(parts) {
             rosterTitle: `Attendance recorded so far for ${formatWarDate(parts.date)}:`,
           },
           {
+            key: 'attendance_roster_2115',
+            hour: 21,
+            minute: 15,
+            roster: true,
+            rosterTitle: `Attendance recorded so far for ${formatWarDate(parts.date)}:`,
+          },
+          {
             key: 'attendance_closed',
             hour: BOT_CONFIG.attendanceEnd.hour,
             minute: BOT_CONFIG.attendanceEnd.minute,
