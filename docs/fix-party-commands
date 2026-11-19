@@ -1,0 +1,42 @@
+# Fix Party Mechanics
+
+## What is a fix party?
+
+- A fix party is a group of fixed members for club/guild activities.
+- A party has at most eight people total: one leader and up to seven members.
+- The party leader manages the party and may remove an inactive member.
+- Each user can belong to only one fixed party per server.
+
+## Fix party commands
+
+`/fix-party info` - Show all commands for fixed parties.
+
+`/fix-party list` - Display current fixed parties and their members in this server. Show the party name, the Party Leader first, then its members. Show empty slots for all remaining positions up to eight people total. Include each member's class and type.
+
+`/fix-party create [name]` - Any member in the Discord server can create one fixed party.
+- The optional text `name` sets the party name. If omitted, use the invoking user's display name followed by "'s Fixed Party".
+- The creator is assigned the shared "Fix Party Leader" role. Create that role if it does not exist.
+- Create two party-specific roles: one for the leader and one for the members.
+
+`/fix-party add [name:@user] [class] [type]` - Party Leaders can add members to their fixed party.
+- `name` is required and uses Discord's server user picker, not free-text name search. Verify the selected user is currently in the server and report if they are not.
+- The selected member is assigned the member role created for this party.
+- Record the member's join date and time, class, and type.
+- A user may belong to only one party in the server. Reject bots, the leader, existing members, and users already in another party.
+- Enforce the eight-person maximum, including the leader, at validation and when saving. This allows at most seven non-leader members.
+- `class` is required. Current classes: Swordsman, Brawler, Archer, Shaman.
+- `type` is required. Current types: Pow, Dex, Int.
+
+`/fix-party remove [name:@user]` - Party Leaders can remove members from their fixed party.
+- `name` is required and uses Discord's server user picker.
+- Verify the selected user is currently in the server and is a member of the leader's party.
+- Remove the party member role from the selected user.
+
+`/fix-party leave` - A leader or member can leave their fixed party.
+- Remove the user's party role.
+- If the leader leaves while members remain, promote the earliest-joined member. The new leader gets the party leader role and shared "Fix Party Leader" role.
+- If the leader is the only person in the party, leaving automatically disbands the party, removes role assignments, and deletes its two party-specific roles.
+
+`/fix-party disband` - Party leader only. Disband the party, remove its role assignments, and delete the two party-specific roles.
+
+The bot needs Manage Roles, and its highest role must be above the roles it creates and manages.

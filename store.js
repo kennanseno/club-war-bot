@@ -1,12 +1,14 @@
 import { randomUUID } from 'node:crypto';
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
+import { FIX_PARTY_CLASSES, FIX_PARTY_TYPES } from './fix-party.js';
 
 export const DATA_FILE = join(process.cwd(), 'data', 'club-war-data.json');
 
 const EMPTY_DATA = Object.freeze({
   version: 1,
   guilds: {},
+  fixParties: {},
   attendance: [],
   lateReports: [],
   announcements: [],
@@ -27,6 +29,77 @@ function validateData(data, filePath) {
   if (data.lateReports === undefined) data.lateReports = [];
   if (!Array.isArray(data.lateReports)) {
     throw new Error(`Invalid late-report records in ${filePath}; refusing to overwrite it.`);
+  }
+  if (data.fixParties === undefined) data.fixParties = {};
+  if (
+    !data.fixParties ||
+    typeof data.fixParties !== 'object' ||
+    Array.isArray(data.fixParties)
+  ) {
+    throw new Error(`Invalid fixed-party records in ${filePath}; refusing to overwrite it.`);
+  }
+  for (const [guildId, parties] of Object.entries(data.fixParties)) {
+    const userIds = new Set();
+    const partyIds = new Set();
+    const roleIds = new Set();
+    if (!guildId || !Array.isArray(parties)) {
+      throw new Error(`Invalid fixed-party records in ${filePath}; refusing to overwrite it.`);
+    }
+    for (const party of parties) {
+      const members = party?.members;
+      const leader = party?.leader;
+      const validPerson = (person) =>
+        person &&
+        typeof person.userId === 'string' &&
+        person.userId.length > 0 &&
+        typeof person.displayName === 'string' &&
+        typeof person.joinedAt === 'string' &&
+        !Number.isNaN(Date.parse(person.joinedAt));
+      if (
+        !party ||
+        typeof party.id !== 'string' ||
+        !party.id ||
+        typeof party.name !== 'string' ||
+        !party.name.trim() ||
+        party.name.length > 80 ||
+        /[\u0000-\u001f\u007f]/.test(party.name) ||
+        typeof party.leaderRoleId !== 'string' ||
+        !party.leaderRoleId ||
+        typeof party.memberRoleId !== 'string' ||
+        !party.memberRoleId ||
+        party.leaderRoleId === party.memberRoleId ||
+        !validPerson(leader) ||
+        ((leader.className !== undefined || leader.type !== undefined) &&
+          (!FIX_PARTY_CLASSES.includes(leader.className) ||
+            !FIX_PARTY_TYPES.includes(leader.type))) ||
+        !Array.isArray(members) ||
+        members.length > 7 ||
+        members.some(
+          (member) =>
+            !validPerson(member) ||
+            !FIX_PARTY_CLASSES.includes(member.className) ||
+            !FIX_PARTY_TYPES.includes(member.type),
+        )
+      ) {
+        throw new Error(`Invalid fixed-party records in ${filePath}; refusing to overwrite it.`);
+      }
+      if (partyIds.has(party.id)) {
+        throw new Error(`Duplicate fixed-party ID in ${filePath}; refusing to overwrite it.`);
+      }
+      partyIds.add(party.id);
+      for (const roleId of [party.leaderRoleId, party.memberRoleId]) {
+        if (roleIds.has(roleId)) {
+          throw new Error(`Duplicate fixed-party role in ${filePath}; refusing to overwrite it.`);
+        }
+        roleIds.add(roleId);
+      }
+      for (const person of [leader, ...members]) {
+        if (userIds.has(person.userId)) {
+          throw new Error(`Duplicate fixed-party member in ${filePath}; refusing to overwrite it.`);
+        }
+        userIds.add(person.userId);
+      }
+    }
   }
   for (const [guildId, settings] of Object.entries(data.guilds)) {
     if (

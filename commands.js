@@ -1,5 +1,6 @@
 import 'dotenv/config';
 import { InstallGlobalCommands } from './utils.js';
+import { FIX_PARTY_COMMAND } from './fix-party-command.js';
 
 const ADMIN_SUBCOMMANDS = [
   {
@@ -212,6 +213,7 @@ const ALL_COMMANDS = [
     integration_types: [0],
     contexts: [0],
   },
+  FIX_PARTY_COMMAND,
 ];
 
 for (const variable of ['APP_ID', 'DISCORD_TOKEN']) {

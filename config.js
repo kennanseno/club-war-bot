@@ -152,6 +152,7 @@ export function getWarInfoMessage(settings) {
     `**Attendance:** Use \`/attended\` from ${formatTime(BOT_CONFIG.attendanceStart)} until ${formatTime(BOT_CONFIG.attendanceEnd)} on war days.`,
     '**Late notice:** Use `/late [date:MM-DD-YYYY]` to report you will be late. The date defaults to today on war days or the next war date otherwise.',
     `**Reminders:** ${reminders} on war days; 7:00 PM on non-war days.`,
+    '**Fixed parties:** Use `/fix-party info` to view fixed-party commands.',
     '',
     '**Admin commands** (authorized admin role):',
     '`/war-admin setup war_channel:<channel> fund_channel:<channel> admin_role:<role>` — configure war reminders, fund announcements, and the initial admin role.',

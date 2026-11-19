@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import { randomUUID } from 'node:crypto';
 import express from 'express';
 import {
   InteractionResponseFlags,
@@ -33,6 +34,15 @@ import {
 import { readData, updateData } from './store.js';
 import { startScheduler } from './scheduler.js';
 import { DiscordRequest } from './utils.js';
+import {
+  FIX_PARTY_LEADER_ROLE_NAME,
+  formatFixPartyList,
+  getPartyLedBy,
+  getUserParty,
+  splitDiscordMessages,
+  validateFixPartyAdd,
+} from './fix-party.js';
+import { FIX_PARTY_INFO_MESSAGE } from './fix-party-command.js';
 import { readGuildFundData, updateGuildFundData } from './guild-fund-store.js';
 import {
   formatGuildFundInfoMessage,
@@ -52,6 +62,7 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const EPHEMERAL = InteractionResponseFlags.EPHEMERAL;
 const MANAGE_GUILD = 1n << 5n;
+const guildOperationQueues = new Map();
 
 function getOption(options, name) {
   return options?.find((option) => option.name === name)?.value;
@@ -93,6 +104,25 @@ function getUserName(body) {
   return getMemberName(body.member, body.user);
 }
 
+async function withGuildOperationLock(guildId, operation) {
+  const previous = guildOperationQueues.get(guildId) ?? Promise.resolve();
+  let release;
+  const current = new Promise((resolve) => {
+    release = resolve;
+  });
+  const queued = previous.then(() => current);
+  guildOperationQueues.set(guildId, queued);
+  await previous;
+  try {
+    return await operation();
+  } finally {
+    release();
+    if (guildOperationQueues.get(guildId) === queued) {
+      guildOperationQueues.delete(guildId);
+    }
+  }
+}
+
 function response(res, content, ephemeral = false) {
   return res.send({
     type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
@@ -102,6 +132,16 @@ function response(res, content, ephemeral = false) {
       allowed_mentions: { parse: [] },
     },
   });
+}
+
+async function sendPublicList(res, body, messages) {
+  response(res, messages[0]);
+  for (const content of messages.slice(1)) {
+    await DiscordRequest(`webhooks/${process.env.APP_ID}/${body.token}`, {
+      method: 'POST',
+      body: { content, allowed_mentions: { parse: [] } },
+    });
+  }
 }
 
 function hasManageGuildPermission(body) {
@@ -249,6 +289,466 @@ async function handleLate(body, res) {
       : `Your late notice for the ${formatWarDate(sessionDate)} war is recorded. An admin can view it with /war-admin late date:${formatWarDate(sessionDate)}.`,
     formatLateListMessages(sessionDate, lateReports),
   );
+}
+
+async function fetchGuildRoles(guildId) {
+  const result = await DiscordRequest(`guilds/${guildId}/roles`, { method: 'GET' });
+  return result.json();
+}
+
+function isDiscordNotFound(error) {
+  return /Discord API request failed \(404\)/.test(error.message);
+}
+
+async function createGuildRole(guildId, name) {
+  const result = await DiscordRequest(`guilds/${guildId}/roles`, {
+    method: 'POST',
+    body: { name, permissions: '0', mentionable: false },
+  });
+  const role = await result.json();
+  if (!role.id) throw new Error(`Discord did not return an ID for the "${name}" role.`);
+  return role;
+}
+
+async function setMemberRole(guildId, userId, roleId, add) {
+  try {
+    return await DiscordRequest(
+      `guilds/${guildId}/members/${userId}/roles/${roleId}`,
+      { method: add ? 'PUT' : 'DELETE' },
+    );
+  } catch (error) {
+    if (!add && isDiscordNotFound(error)) return;
+    throw error;
+  }
+}
+
+async function deleteGuildRole(guildId, roleId) {
+  try {
+    return await DiscordRequest(`guilds/${guildId}/roles/${roleId}`, {
+      method: 'DELETE',
+    });
+  } catch (error) {
+    if (isDiscordNotFound(error)) return;
+    throw error;
+  }
+}
+
+async function applyRoleChanges(guildId, changes) {
+  const completed = [];
+  try {
+    for (const change of changes) {
+      await setMemberRole(guildId, change.userId, change.roleId, change.add);
+      completed.push(change);
+    }
+    return completed;
+  } catch (error) {
+    const rollbackErrors = [];
+    for (const change of completed.reverse()) {
+      try {
+        await setMemberRole(guildId, change.userId, change.roleId, !change.add);
+      } catch (rollbackError) {
+        rollbackErrors.push(rollbackError.message);
+      }
+    }
+    const reason = isDiscordNotFound(error)
+      ? 'A selected member or party role could not be found; the member may have left the server or a party role may have been deleted.'
+      : "Check the bot's Manage Roles permission and role hierarchy.";
+    throw new Error(
+      `Could not update party roles. ${reason}${rollbackErrors.length ? ` Role rollback also failed: ${rollbackErrors.join('; ')}` : ''}`,
+      { cause: error },
+    );
+  }
+}
+
+async function rollbackRoleChanges(guildId, changes) {
+  const errors = [];
+  for (const change of [...changes].reverse()) {
+    try {
+      await setMemberRole(guildId, change.userId, change.roleId, !change.add);
+    } catch (error) {
+      errors.push(error.message);
+    }
+  }
+  return errors;
+}
+
+async function deleteCreatedRoles(guildId, roleIds) {
+  const errors = [];
+  for (const roleId of [...roleIds].reverse()) {
+    try {
+      await deleteGuildRole(guildId, roleId);
+    } catch (error) {
+      errors.push(`${roleId}: ${error.message}`);
+    }
+  }
+  return errors;
+}
+
+function getResolvedUser(body, userId) {
+  return body.data.resolved?.users?.[userId];
+}
+
+function getPartyList(data, guildId) {
+  return data.fixParties[guildId] ?? [];
+}
+
+function getPartyMemberDisplayName(member, user) {
+  return getMemberName({ ...member, user }, user);
+}
+
+function getPartyOption(options, name) {
+  return getOption(options, name);
+}
+
+async function handleFixParty(body, res) {
+  if (!requireGuild(body, res)) return;
+  const guildId = body.guild_id;
+  return withGuildOperationLock(guildId, async () => {
+    const { name: subcommand, options } = getSubcommand(body.data);
+    const actorId = getUserId(body);
+    if (!actorId) {
+      return response(res, 'I could not identify your server account.', true);
+    }
+
+    const data = await readData();
+    const parties = getPartyList(data, guildId);
+    if (subcommand === 'info') {
+      return response(res, FIX_PARTY_INFO_MESSAGE, true);
+    }
+    if (subcommand === 'list') {
+      const sorted = [...parties].sort((left, right) => left.name.localeCompare(right.name));
+      return sendPublicList(res, body, splitDiscordMessages(formatFixPartyList(sorted)));
+    }
+    if (subcommand === 'create') {
+      if (getUserParty(parties, actorId)) {
+        return response(res, 'You already belong to a fixed party in this server.', true);
+      }
+      const requestedName = getPartyOption(options, 'name');
+      const partyName = (requestedName ?? `${getUserName(body)}'s Fixed Party`).trim();
+      if (!partyName || partyName.length > 80 || /[\u0000-\u001f\u007f]/.test(partyName)) {
+        return response(res, 'The party name must be 1–80 characters and cannot contain control characters.', true);
+      }
+
+      const createdRoleIds = [];
+      const assignedRoles = [];
+      try {
+        const roles = await fetchGuildRoles(guildId);
+        let sharedLeaderRole = roles.find((role) => role.name === FIX_PARTY_LEADER_ROLE_NAME);
+        if (!sharedLeaderRole) {
+          sharedLeaderRole = await createGuildRole(guildId, FIX_PARTY_LEADER_ROLE_NAME);
+          createdRoleIds.push(sharedLeaderRole.id);
+        }
+        const sharedLeaderRoleId = sharedLeaderRole.id;
+        const leaderRole = await createGuildRole(
+          guildId,
+          `${partyName} Leader`.slice(0, 100),
+        );
+        createdRoleIds.push(leaderRole.id);
+        const memberRole = await createGuildRole(
+          guildId,
+          `${partyName} Members`.slice(0, 100),
+        );
+        createdRoleIds.push(memberRole.id);
+        const roleChanges = [
+          ...(!body.member?.roles?.includes(sharedLeaderRoleId)
+            ? [{ userId: actorId, roleId: sharedLeaderRoleId, add: true }]
+            : []),
+          { userId: actorId, roleId: leaderRole.id, add: true },
+        ];
+        assignedRoles.push(...(await applyRoleChanges(guildId, roleChanges)));
+
+        const now = new Date().toISOString();
+        const party = {
+          id: randomUUID(),
+          name: partyName,
+          leaderRoleId: leaderRole.id,
+          memberRoleId: memberRole.id,
+          leader: {
+            userId: actorId,
+            displayName: getUserName(body),
+            joinedAt: now,
+          },
+          members: [],
+        };
+        try {
+          await updateData((store) => {
+            const storedParties = (store.fixParties[guildId] ??= []);
+            if (getUserParty(storedParties, actorId)) {
+              throw new Error('You already belong to a fixed party in this server.');
+            }
+            storedParties.push(party);
+          });
+        } catch (error) {
+          const roleRollbackErrors = await rollbackRoleChanges(guildId, assignedRoles);
+          const roleDeleteErrors = await deleteCreatedRoles(guildId, createdRoleIds);
+          throw new Error(
+            `Party data could not be saved.${roleRollbackErrors.length || roleDeleteErrors.length ? ` Cleanup also failed: ${[...roleRollbackErrors, ...roleDeleteErrors].join('; ')}` : ''}`,
+            { cause: error },
+          );
+        }
+        return response(res, `Fixed party **${partyName}** created. You are its leader.`, true);
+      } catch (error) {
+        if (assignedRoles.length === 0 && createdRoleIds.length) {
+          const cleanupErrors = await deleteCreatedRoles(guildId, createdRoleIds);
+          if (cleanupErrors.length) {
+            console.error(`Could not clean up roles after party creation failed for guild ${guildId}:`, cleanupErrors);
+            throw new Error(
+              `${error.message} Role cleanup also failed: ${cleanupErrors.join('; ')}`,
+              { cause: error },
+            );
+          }
+        }
+        throw error;
+      }
+    }
+
+    const party = getPartyLedBy(parties, actorId);
+    if (subcommand === 'add') {
+      if (!party) {
+        return response(res, 'Only a fixed-party leader can add members.', true);
+      }
+      const targetId = getPartyOption(options, 'name');
+      const user = getResolvedUser(body, targetId);
+      const resolvedMember = body.data.resolved?.members?.[targetId];
+      const className = getPartyOption(options, 'class');
+      const type = getPartyOption(options, 'type');
+      if (!resolvedMember) {
+        return response(res, 'That user is not currently a member of this server. Select a server member.', true);
+      }
+      const validation = validateFixPartyAdd({
+        parties,
+        party,
+        actorId,
+        user,
+        className,
+        type,
+      });
+      if (validation) return response(res, validation, true);
+      const targetMember = { ...resolvedMember, user };
+      if (targetMember.roles?.includes(party.memberRoleId)) {
+        return response(res, 'That user already has this party role, but is not in the saved roster. Ask a server admin to resolve the mismatch.', true);
+      }
+      const roles = await fetchGuildRoles(guildId);
+      if (!roles.some((role) => role.id === party.memberRoleId)) {
+        return response(res, 'This party member role no longer exists. Ask a server admin to repair the party roles.', true);
+      }
+      const roleChange = { userId: targetId, roleId: party.memberRoleId, add: true };
+      const applied = await applyRoleChanges(guildId, [roleChange]);
+      try {
+        const now = new Date().toISOString();
+        await updateData((store) => {
+          const storedParties = getPartyList(store, guildId);
+          const storedParty = storedParties.find((entry) => entry.id === party.id);
+          const storedValidation = validateFixPartyAdd({
+            parties: storedParties,
+            party: storedParty,
+            actorId,
+            user,
+            className,
+            type,
+          });
+          if (storedValidation) throw new Error(storedValidation);
+          storedParty.members.push({
+            userId: targetId,
+            displayName: getPartyMemberDisplayName(targetMember, user),
+            joinedAt: now,
+            className,
+            type,
+          });
+        });
+      } catch (error) {
+        const rollbackErrors = await rollbackRoleChanges(guildId, applied);
+        throw new Error(
+          `The member role was assigned, but party data could not be saved.${rollbackErrors.length ? ` Role rollback also failed: ${rollbackErrors.join('; ')}` : ''}`,
+          { cause: error },
+        );
+      }
+      return response(res, `Added <@${targetId}> to **${party.name}** as ${className} / ${type}.`, true);
+    }
+
+    if (subcommand === 'remove') {
+      if (!party) return response(res, 'Only a fixed-party leader can remove members.', true);
+      const targetId = getPartyOption(options, 'name');
+      const user = getResolvedUser(body, targetId);
+      const resolvedMember = body.data.resolved?.members?.[targetId];
+      if (!targetId || !user || !resolvedMember) {
+        return response(res, 'Select a member who is currently in this server.', true);
+      }
+      const member = party.members.find((entry) => entry.userId === targetId);
+      if (!member) {
+        return response(res, 'That user is not a member of your fixed party.', true);
+      }
+      const roleChange = { userId: targetId, roleId: party.memberRoleId, add: false };
+      const applied = await applyRoleChanges(guildId, [roleChange]);
+      try {
+        await updateData((store) => {
+          const storedParty = getPartyLedBy(getPartyList(store, guildId), actorId);
+          if (!storedParty?.members.some((entry) => entry.userId === targetId)) {
+            throw new Error('That user is no longer a member of your fixed party.');
+          }
+          storedParty.members = storedParty.members.filter(
+            (entry) => entry.userId !== targetId,
+          );
+        });
+      } catch (error) {
+        const rollbackErrors = await rollbackRoleChanges(guildId, applied);
+        throw new Error(
+          `The member role was removed, but party data could not be saved.${rollbackErrors.length ? ` Role rollback also failed: ${rollbackErrors.join('; ')}` : ''}`,
+          { cause: error },
+        );
+      }
+      return response(res, `Removed ${member.displayName} from **${party.name}**.`, true);
+    }
+
+    if (subcommand === 'leave') {
+      const userParty = getUserParty(parties, actorId);
+      if (!userParty) return response(res, 'You are not currently in a fixed party.', true);
+      if (userParty.leader.userId !== actorId) {
+        const roleChange = {
+          userId: actorId,
+          roleId: userParty.memberRoleId,
+          add: false,
+        };
+        const applied = await applyRoleChanges(guildId, [roleChange]);
+        try {
+          await updateData((store) => {
+            const storedParty = getPartyList(store, guildId).find(
+              (entry) => entry.id === userParty.id,
+            );
+            if (!storedParty?.members.some((entry) => entry.userId === actorId)) {
+              throw new Error('You are no longer listed in that fixed party.');
+            }
+            storedParty.members = storedParty.members.filter(
+              (entry) => entry.userId !== actorId,
+            );
+          });
+        } catch (error) {
+          const rollbackErrors = await rollbackRoleChanges(guildId, applied);
+          throw new Error(
+            `Your role was removed, but party data could not be saved.${rollbackErrors.length ? ` Role rollback also failed: ${rollbackErrors.join('; ')}` : ''}`,
+            { cause: error },
+          );
+        }
+        return response(res, `You left **${userParty.name}**.`, true);
+      }
+
+      if (userParty.members.length === 0) {
+        return disbandFixParty(guildId, actorId, userParty, res, 'left');
+      }
+      const successor = [...userParty.members].sort(
+        (left, right) =>
+          left.joinedAt.localeCompare(right.joinedAt) ||
+          left.userId.localeCompare(right.userId),
+      )[0];
+      const roles = await fetchGuildRoles(guildId);
+      const leaderRole = roles.find((role) => role.name === FIX_PARTY_LEADER_ROLE_NAME);
+      if (
+        !leaderRole ||
+        !roles.some((role) => role.id === userParty.leaderRoleId) ||
+        !roles.some((role) => role.id === userParty.memberRoleId)
+      ) {
+        return response(res, 'One or more party roles are missing. Ask a server admin to repair the roles before transferring leadership.', true);
+      }
+      const roleChanges = [
+        { userId: successor.userId, roleId: userParty.memberRoleId, add: false },
+        { userId: successor.userId, roleId: userParty.leaderRoleId, add: true },
+        { userId: successor.userId, roleId: leaderRole.id, add: true },
+        { userId: actorId, roleId: userParty.leaderRoleId, add: false },
+        { userId: actorId, roleId: leaderRole.id, add: false },
+      ];
+      let applied;
+      try {
+        applied = await applyRoleChanges(guildId, roleChanges);
+      } catch (error) {
+        if (isDiscordNotFound(error.cause)) {
+          return response(
+            res,
+            `The earliest-joined member, ${successor.displayName}, may no longer be in this server. Remove them from the roster before you can leave. ${error.message}`,
+            true,
+          );
+        }
+        throw error;
+      }
+      try {
+        await updateData((store) => {
+          const storedParty = getPartyList(store, guildId).find(
+            (entry) => entry.id === userParty.id,
+          );
+          if (
+            !storedParty ||
+            storedParty.leader.userId !== actorId ||
+            !storedParty.members.some((entry) => entry.userId === successor.userId)
+          ) {
+            throw new Error('Party membership changed before leadership could be transferred.');
+          }
+          storedParty.leader = successor;
+          storedParty.members = storedParty.members.filter(
+            (entry) => entry.userId !== successor.userId,
+          );
+        });
+      } catch (error) {
+        const rollbackErrors = await rollbackRoleChanges(guildId, applied);
+        throw new Error(
+          `Roles were changed, but the leadership transfer could not be saved.${rollbackErrors.length ? ` Role rollback also failed: ${rollbackErrors.join('; ')}` : ''}`,
+          { cause: error },
+        );
+      }
+      return response(
+        res,
+        `You left **${userParty.name}**. <@${successor.userId}> is now the party leader.`,
+        true,
+      );
+    }
+
+    if (subcommand === 'disband') {
+      if (!party) return response(res, 'Only a fixed-party leader can disband a party.', true);
+      return disbandFixParty(guildId, actorId, party, res, 'disbanded');
+    }
+    return response(res, 'Unknown fix-party command.', true);
+  });
+}
+
+async function disbandFixParty(guildId, actorId, party, res, action) {
+  const roles = await fetchGuildRoles(guildId);
+  const leaderRole = roles.find((role) => role.name === FIX_PARTY_LEADER_ROLE_NAME);
+  const roleChanges = [
+    { userId: actorId, roleId: party.leaderRoleId, add: false },
+    ...(leaderRole ? [{ userId: actorId, roleId: leaderRole.id, add: false }] : []),
+    ...party.members.map((member) => ({
+      userId: member.userId,
+      roleId: party.memberRoleId,
+      add: false,
+    })),
+  ];
+  const applied = await applyRoleChanges(guildId, roleChanges);
+  try {
+    await updateData((store) => {
+      const storedParties = getPartyList(store, guildId);
+      const index = storedParties.findIndex((entry) => entry.id === party.id);
+      if (index < 0) throw new Error('This fixed party no longer exists.');
+      storedParties.splice(index, 1);
+    });
+  } catch (error) {
+    const rollbackErrors = await rollbackRoleChanges(guildId, applied);
+    throw new Error(
+      `Party data could not be updated.${rollbackErrors.length ? ` Role rollback also failed: ${rollbackErrors.join('; ')}` : ''}`,
+      { cause: error },
+    );
+  }
+  const deleteErrors = await deleteCreatedRoles(guildId, [
+    party.leaderRoleId,
+    party.memberRoleId,
+  ]);
+  if (deleteErrors.length) {
+    throw new Error(
+      `The party was removed from the roster, but one or more party roles could not be deleted. Remove these roles manually: ${deleteErrors.join('; ')}`,
+    );
+  }
+  const message =
+    action === 'left'
+      ? `You left **${party.name}**. It had no other members, so the party was disbanded.`
+      : `**${party.name}** was disbanded and its party roles were deleted.`;
+  return response(res, message, true);
 }
 
 async function handleAdmin(body, res, data) {
@@ -487,13 +987,16 @@ app.post(
         return response(res, formatGuildFundMessage(current.guildFunds[req.body.guild_id]));
       }
       if (data.name === 'war-admin') return await handleAdmin(req.body, res, data);
+      if (data.name === 'fix-party') return await handleFixParty(req.body, res);
       return response(res, `Unknown command: ${data.name}`, true);
     } catch (error) {
       console.error(`Interaction ${data.name} failed:`, error);
       if (res.headersSent) return;
       return response(
         res,
-        data.name === 'attended'
+        data.name === 'fix-party'
+          ? String(error.message).slice(0, 1800)
+          : data.name === 'attended'
           ? 'Attendance was not recorded because saving it failed. Please try again or contact a server admin.'
           : data.name === 'late'
             ? 'Your late notice was not recorded because saving it failed. Please try again or contact a server admin.'

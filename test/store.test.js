@@ -71,3 +71,55 @@ test('store loads existing data without late reports as an empty late-report lis
     assert.deepEqual((await store.read()).lateReports, []);
   });
 });
+
+test('store loads existing data without fixed parties as an empty party collection', async () => {
+  await withTempStore(async (store, directory) => {
+    const legacyData = {
+      version: 1,
+      guilds: {},
+      attendance: [],
+      announcements: [],
+    };
+    await writeFile(join(directory, 'data.json'), JSON.stringify(legacyData), 'utf8');
+
+    assert.deepEqual((await store.read()).fixParties, {});
+  });
+});
+
+test('store accepts up to seven party members and rejects an eighth non-leader member', async () => {
+  await withTempStore(async (store) => {
+    const createParty = (memberCount) => ({
+      version: 1,
+      guilds: {},
+      fixParties: {
+        guild: [{
+          id: 'party',
+          name: 'Raid Squad',
+          leaderRoleId: 'leader-role',
+          memberRoleId: 'member-role',
+          leader: {
+            userId: 'leader',
+            displayName: 'Leader',
+            joinedAt: '2026-01-01T00:00:00.000Z',
+          },
+          members: Array.from({ length: memberCount }, (_, index) => ({
+            userId: `member-${index}`,
+            displayName: `Member ${index}`,
+            joinedAt: `2026-01-0${index + 2}T00:00:00.000Z`,
+            className: 'Archer',
+            type: 'Dex',
+          })),
+        }],
+      },
+      attendance: [],
+      announcements: [],
+    });
+
+    await store.update((data) => Object.assign(data, createParty(7)));
+    assert.equal((await store.read()).fixParties.guild[0].members.length, 7);
+    await assert.rejects(
+      store.update((data) => Object.assign(data, createParty(8))),
+      /Invalid fixed-party records/,
+    );
+  });
+});
