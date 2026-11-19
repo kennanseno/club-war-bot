@@ -15,7 +15,7 @@ import {
 import {
   BOT_CONFIG,
   formatTime,
-  getWarInfoMessage,
+  getRanBotInfoMessage,
   WAR_SCHEDULE_TEXT,
 } from './config.js';
 import {
@@ -973,10 +973,17 @@ app.post(
     try {
       if (data.name === 'attended') return await handleAttended(req.body, res);
       if (data.name === 'late') return await handleLate(req.body, res);
-      if (data.name === 'war-info') {
+      if (data.name === 'ran-bot') {
         if (!requireGuild(req.body, res)) return;
+        const { name: subcommand } = getSubcommand(data);
+        if (subcommand !== 'info') {
+          return response(res, 'Unknown Ran Online bot command.', true);
+        }
         const current = await readData();
-        return response(res, getWarInfoMessage(current.guilds[req.body.guild_id]));
+        const infoMessages = splitDiscordMessages(
+          getRanBotInfoMessage(current.guilds[req.body.guild_id]).split('\n'),
+        );
+        return sendAdminMessages(res, req.body, infoMessages);
       }
       if (data.name === 'guild-fund') {
         if (!requireGuild(req.body, res)) return;

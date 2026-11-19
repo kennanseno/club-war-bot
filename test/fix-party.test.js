@@ -10,7 +10,7 @@ import {
   validateFixPartyAdd,
 } from '../fix-party.js';
 import { FIX_PARTY_COMMAND, FIX_PARTY_INFO_MESSAGE } from '../fix-party-command.js';
-import { getWarInfoMessage } from '../config.js';
+import { getRanBotInfoMessage } from '../config.js';
 
 const party = {
   id: 'party-1',
@@ -43,7 +43,11 @@ test('fix-party command registers all subcommands and required add choices', () 
     FIX_PARTY_TYPES,
   );
   assert.match(FIX_PARTY_INFO_MESSAGE, /`\/fix-party info`/);
-  assert.match(getWarInfoMessage(), /`\/fix-party info`/);
+  const botInfo = getRanBotInfoMessage();
+  assert.match(botInfo, /`\/fix-party info`/);
+  assert.match(botInfo, /`\/ran-bot info`/);
+  assert.match(botInfo, /`\/guild-fund info`/);
+  assert.match(botInfo, /`\/war-admin attendance/);
 });
 
 test('add validates leader, selected user, class/type, uniqueness, and seven-member maximum', () => {

@@ -12,7 +12,17 @@ import {
 } from '../schedule.js';
 import { getManilaParts } from '../schedule.js';
 import { getScheduledEvents } from '../scheduler.js';
-import { getWarInfoMessage } from '../config.js';
+import { BOT_INFO_REMINDER, getRanBotInfoMessage } from '../config.js';
+import { RAN_BOT_COMMAND } from '../ran-bot-command.js';
+import { splitDiscordMessages } from '../fix-party.js';
+
+test('ran-bot command exposes the info subcommand', () => {
+  assert.equal(RAN_BOT_COMMAND.name, 'ran-bot');
+  assert.deepEqual(
+    RAN_BOT_COMMAND.options.map((option) => option.name),
+    ['info'],
+  );
+});
 
 test('attendance opens at 7:30 PM and closes at 9:30 PM Manila time', () => {
   assert.equal(getAttendanceStatus(new Date('2026-11-16T11:29:59Z')).status, 'too-early');
@@ -103,7 +113,7 @@ test('non-war days get a single 7:00 PM weekly schedule reminder', () => {
   assert.match(events[0].message, /Use `\/late \[date:MM-DD-YYYY\]` when you expect to arrive late/);
   assert.match(events[0].message, /helps the guild keep you instead of kicking you offline at 7:40 PM/);
   assert.doesNotMatch(events[0].message, /guild-fund|\/war-admin fund|\/war-admin late/);
-  assert.ok(events[0].message.endsWith('**Need help with the bot commands? Use `/war-info`.**'));
+  assert.ok(events[0].message.endsWith(BOT_INFO_REMINDER));
 });
 
 test('war-day preparation reminder runs at 5 PM Manila time', () => {
@@ -115,7 +125,7 @@ test('war-day preparation reminder runs at 5 PM Manila time', () => {
   assert.equal(event.everyone, true);
   assert.match(event.message, /@everyone \*\*Club war is tonight at 8:00 PM—gear up, squad up, and get ready for the W!\*\*/);
   assert.match(event.message, /Regroup:\*\* 7:00 PM–8:00 PM Manila time/);
-  assert.ok(event.message.endsWith('**Need help with the bot commands? Use `/war-info`.**'));
+  assert.ok(event.message.endsWith(BOT_INFO_REMINDER));
 });
 
 test('6 PM and 6:30 PM reminders use gamer-style preparation wording', () => {
@@ -193,7 +203,7 @@ test('7:40 PM war-day reminder explains offline kicks and late-notice protection
   assert.match(reminder.message, /Late-notice members stay/);
   assert.doesNotMatch(reminder.message, /\/late/);
   assert.match(reminder.message, /Once you join, use `\/attended` to record your attendance/);
-  assert.ok(reminder.message.endsWith('**Need help with the bot commands? Use `/war-info`.**'));
+  assert.ok(reminder.message.endsWith(BOT_INFO_REMINDER));
 
   assert.ok(lateRoster);
   assert.equal(lateRoster.lateRoster, true);
@@ -222,14 +232,14 @@ test('all war-day announcements include the regroup, kick-off, and late notice',
       (scheduledEvent) => !scheduledEvent.roster,
     );
     assert.ok(event, `expected a reminder at ${time}`);
-    assert.ok(event.message.endsWith('**Need help with the bot commands? Use `/war-info`.**'));
+    assert.ok(event.message.endsWith(BOT_INFO_REMINDER));
     assert.match(event.message, /Regroup.*7:00 PM–8:00 PM/s);
     assert.match(event.message, /kicked at 7:40 PM/);
     assert.match(event.message, /\*\*Running late\?\*\* Use `\/late \[date:MM-DD-YYYY\]`/);
     assert.match(event.message, /\*\*Attendance:\*\* Members use `\/attended` from 7:30 PM until 9:30 PM/);
     assert.doesNotMatch(event.message, /Guild fund:|\/guild-fund|\/war-admin/);
     if (time === '2026-11-16T13:30:00Z') {
-      assert.match(event.message, /Need help with the bot commands\? Use `\/war-info`/);
+      assert.match(event.message, /Need help with the bot commands\? Use `\/ran-bot info`/);
     }
     assert.match(event.message, /\*\*Regroup/);
     assert.match(event.message, /\*\*Offline guild members will be kicked/);
@@ -250,7 +260,7 @@ test('9:15 PM reminder tells members to use attended before close', () => {
     /Final check: use `\/attended` now to record your attendance before it closes at 9:30 PM Manila time/,
   );
   assert.doesNotMatch(event.message, /PM PM/);
-  assert.ok(event.message.endsWith('**Need help with the bot commands? Use `/war-info`.**'));
+  assert.ok(event.message.endsWith(BOT_INFO_REMINDER));
 
   const roster = getScheduledEvents(
     getManilaParts(new Date('2026-11-16T13:15:00Z')),
@@ -269,7 +279,7 @@ test('war-day start and end reminders run at 8 PM and 9 PM Manila time', () => {
   assert.match(warStart.message, /@everyone \*\*GLHF, everyone! Club war starts now—lock in and let's get that W!\*\*/);
   assert.match(warStart.message, /used `\/attended` yet, check in by 9:30 PM Manila time/i);
   assert.match(warStart.message, /No check-in means no salary for this war!/);
-  assert.ok(warStart.message.endsWith('**Need help with the bot commands? Use `/war-info`.**'));
+  assert.ok(warStart.message.endsWith(BOT_INFO_REMINDER));
 
   const warEnd = getScheduledEvents(
     getManilaParts(new Date('2026-11-16T13:00:00Z')),
@@ -280,8 +290,8 @@ test('war-day start and end reminders run at 8 PM and 9 PM Manila time', () => {
   assert.match(warEnd.message, /30 minutes left to use `\/attended`/i);
   assert.match(warEnd.message, /Attendance closes at 9:30 PM Manila time/);
   assert.match(warEnd.message, /No check-in means no salary for this war!/);
-  assert.match(warEnd.message, /Need help with the bot commands\? Use `\/war-info`/);
-  assert.ok(warEnd.message.endsWith('**Need help with the bot commands? Use `/war-info`.**'));
+  assert.match(warEnd.message, /Need help with the bot commands\? Use `\/ran-bot info`/);
+  assert.ok(warEnd.message.endsWith(BOT_INFO_REMINDER));
 
   const attendanceRoster = getScheduledEvents(
     getManilaParts(new Date('2026-11-16T13:00:00Z')),
@@ -308,7 +318,7 @@ test('9:30 PM attendance close uses gamer-style participation wording', () => {
     event.message,
     /Attendance is now closed. GG to the squad—participation is locked/,
   );
-  assert.match(event.message, /Need help with the bot commands\? Use `\/war-info`/);
+  assert.match(event.message, /Need help with the bot commands\? Use `\/ran-bot info`/);
 });
 
 test('non-war day reminder is not scheduled at other times or on war days', () => {
@@ -321,8 +331,8 @@ test('non-war day reminder is not scheduled at other times or on war days', () =
   assert.equal(warDay.some((event) => event.key === 'non_war_day_schedule'), false);
 });
 
-test('war info shows commands, configured schedule, and server setup', () => {
-  const message = getWarInfoMessage({
+test('Ran Online bot info shows the latest commands, configured schedule, and server setup', () => {
+  const message = getRanBotInfoMessage({
     channelId: 'war-channel',
     adminRoleIds: ['war-admin-role'],
   });
@@ -340,6 +350,8 @@ test('war info shows commands, configured schedule, and server setup', () => {
   assert.match(message, /`\/war-admin fund php value:<text>`/);
   assert.match(message, /`\/war-admin fund channel channel:<channel>`/);
   assert.match(message, /`\/guild-fund info`/);
+  assert.match(message, /`\/ran-bot info`/);
+  assert.match(message, /`\/fix-party add name:@user class:<class> type:<type>`/);
   assert.match(message, /All commands can be used in any server channel/);
   assert.match(
     message,
@@ -350,7 +362,20 @@ test('war info shows commands, configured schedule, and server setup', () => {
   assert.match(message, /Reminders:\*\* 5:00 PM, 6:00 PM, 6:30 PM, 7:00 PM, 7:15 PM, 7:30 PM, 7:40 PM, 8:00 PM, 9:00 PM, 9:15 PM/);
 });
 
-test('war info explains setup when the server is not configured', () => {
-  assert.match(getWarInfoMessage(), /has not been configured/);
-  assert.match(getWarInfoMessage(), /`\/war-admin setup`/);
+test('Ran Online bot info explains setup when the server is not configured', () => {
+  assert.match(getRanBotInfoMessage(), /has not been configured/);
+  assert.match(getRanBotInfoMessage(), /`\/war-admin setup`/);
+});
+
+test('Ran Online bot info includes all latest commands within Discord message limits', () => {
+  const message = getRanBotInfoMessage();
+  const pages = splitDiscordMessages(message.split('\n'));
+
+  assert.match(message, /`\/attended`/);
+  assert.match(message, /`\/late \[date:MM-DD-YYYY\]`/);
+  assert.match(message, /`\/guild-fund info`/);
+  assert.match(message, /`\/fix-party disband`/);
+  assert.match(message, /`\/war-admin add-attendance member date:MM-DD-YYYY`/);
+  assert.ok(pages.length > 1);
+  assert.ok(pages.every((page) => page.length <= 1900));
 });

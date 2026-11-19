@@ -31,7 +31,7 @@ export function formatTime({ hour, minute }) {
 export const BOT_USAGE_TEXT =
   `**Attendance:** Members use \`/attended\` from ${formatTime(ATTENDANCE_START)} until ${formatTime(ATTENDANCE_END)} on war nights.\n\n**Running late?** Use \`/late [date:MM-DD-YYYY]\`; the date defaults to today on war days or the next war date otherwise.`;
 
-export const BOT_INFO_REMINDER = '**Need help with the bot commands? Use `/war-info`.**';
+export const BOT_INFO_REMINDER = '**Need help with the bot commands? Use `/ran-bot info`.**';
 
 export const NON_WAR_USAGE_TEXT =
   `**Attendance:** On war days, use \`/attended\` from ${formatTime(ATTENDANCE_START)} until ${formatTime(ATTENDANCE_END)} to record that you joined the war. It helps track participation and your war salary.\n\n**Late notice:** Use \`/late [date:MM-DD-YYYY]\` when you expect to arrive late for a war. This records that you are still joining and helps the guild keep you instead of kicking you offline at 7:40 PM.\n\n**Why use them:** \`/attended\` records participation after you join, while \`/late\` lets the guild know you are coming later.`;
@@ -133,7 +133,7 @@ export const BOT_CONFIG = Object.freeze({
 
 export const WAR_SCHEDULE_TEXT = warScheduleText;
 
-export function getWarInfoMessage(settings) {
+export function getRanBotInfoMessage(settings) {
   const reminders = BOT_CONFIG.reminders
     .map(({ hour, minute }) => formatTime({ hour, minute }))
     .join(', ');
@@ -145,14 +145,27 @@ export function getWarInfoMessage(settings) {
     : 'This bot has not been configured in this server yet. A server manager can run `/war-admin setup`.';
 
   return [
-    '**Club War Information**',
+    '**Ran Online Club & Guild Management Bot**',
     `**Schedule:** ${WAR_SCHEDULE_TEXT} ${BOT_CONFIG.timezone}`,
     '**Commands:** All commands can be used in any server channel. Scheduled reminders are sent to the configured reminder channel.',
     `**Regroup:** ${formatTime(BOT_CONFIG.regroupStart)}–${formatTime(BOT_CONFIG.regroupEnd)} Manila time; offline guild members are kicked at 7:40 PM.`,
     `**Attendance:** Use \`/attended\` from ${formatTime(BOT_CONFIG.attendanceStart)} until ${formatTime(BOT_CONFIG.attendanceEnd)} on war days.`,
     '**Late notice:** Use `/late [date:MM-DD-YYYY]` to report you will be late. The date defaults to today on war days or the next war date otherwise.',
     `**Reminders:** ${reminders} on war days; 7:00 PM on non-war days.`,
-    '**Fixed parties:** Use `/fix-party info` to view fixed-party commands.',
+    '',
+    '**Member commands:**',
+    '`/ran-bot info` — show this command guide.',
+    '`/attended` — record your attendance during the war-day attendance window.',
+    '`/late [date:MM-DD-YYYY]` — report that you will arrive late for a scheduled war.',
+    '`/guild-fund` or `/guild-fund view` — view current EP, Gold, and PHP cash balances.',
+    '`/guild-fund info` — show guild fund commands.',
+    '`/fix-party info` — show fixed-party commands.',
+    '`/fix-party list` — list parties, members, and open slots.',
+    '`/fix-party create [name]` — create a fixed party.',
+    '`/fix-party add name:@user class:<class> type:<type>` — add a member (party leader only).',
+    '`/fix-party remove name:@user` — remove a member (party leader only).',
+    '`/fix-party leave` — leave a fixed party.',
+    '`/fix-party disband` — disband a fixed party (party leader only).',
     '',
     '**Admin commands** (authorized admin role):',
     '`/war-admin setup war_channel:<channel> fund_channel:<channel> admin_role:<role>` — configure war reminders, fund announcements, and the initial admin role.',
@@ -162,12 +175,9 @@ export function getWarInfoMessage(settings) {
     '`/war-admin fund gold value:<text>` — update the guild Gold balance.',
     '`/war-admin fund php value:<text>` — update the guild PHP cash balance.',
     '`/war-admin fund channel channel:<channel>` — set where fund updates are announced with `@everyone`.',
-    '`/guild-fund view` — show current EP, Gold, and PHP cash fund values.',
-    '`/guild-fund info` — show all public and admin guild fund commands.',
     '`/war-admin attendance [date:MM-DD-YYYY]` — view session attendance; defaults to the latest war date.',
     '`/war-admin late [date:MM-DD-YYYY]` — view late notices; defaults to the latest war date.',
     '`/war-admin add-attendance member date:MM-DD-YYYY` — add attendance manually.',
-    '`/guild-fund` — view current EP, Gold, and PHP cash fund balances.',
     '',
     '**Current server configuration**',
     serverConfiguration,

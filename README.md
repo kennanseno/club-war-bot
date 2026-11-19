@@ -1,16 +1,22 @@
-# Club War Attendance Bot
+# Ran Online Club & Guild Management Bot
 
-This Discord bot sends club-war reminders and records attendance for wars held every Monday, Wednesday, and Saturday from 8:00 to 9:00 PM Philippines time (`Asia/Manila`).
+This Discord bot supports club and guild management for **Ran Online**, the Korean MMORPG. It brings together recurring club-war reminders and attendance tracking, guild fund announcements, and fixed-party management in one server-scoped bot. Club wars are scheduled every Monday, Wednesday, and Saturday from 8:00 to 9:00 PM Philippines time (`Asia/Manila`).
 
-## What it does
+## Club and guild features
 
-- Sends an initial `@everyone` reminder at 5:00 PM Manila time, preparation reminders at 6:00, 6:30, 7:00, 7:15, and 7:30 PM, a 7:40 PM `@everyone` notice about kicking offline members, an 8:00 PM gamer-style war-start reminder, a 9:00 PM gamer-style war-end reminder, a 9:15 PM final `/attended` check-in reminder with the current attendance roster, and a 9:30 PM attendance-close reminder. The 7:40 PM notice is followed by the timestamp-ordered list of members who recorded a late notice for that war, using the same single-column table format as `/war-admin attendance`; only those members are kept in the guild instead of being kicked. Every reminder ends by directing members to `/war-info` for command help. The start and end messages remind members to use `/attended` by 9:30 PM or they won't be counted for that war's salary. Other reminders explain member and admin commands.
+- **Fixed parties:** Members can create and manage fixed parties of up to eight people total (one leader and up to seven members), with party roles, class/type details, join timestamps, leader succession, and public rosters. See [docs/fix-party-commands](./docs/fix-party-commands).
+- **Guild funds:** Members can view EP, Gold, and PHP cash balances. Authorized admins can update values and announce changes.
+- **Club-war operations:** The bot schedules reminders, records attendance and late notices, and provides admin views and attendance corrections.
+
+## Club-war reminders and attendance
+
+- Sends an initial `@everyone` reminder at 5:00 PM Manila time, preparation reminders at 6:00, 6:30, 7:00, 7:15, and 7:30 PM, a 7:40 PM `@everyone` notice about kicking offline members, an 8:00 PM gamer-style war-start reminder, a 9:00 PM gamer-style war-end reminder, a 9:15 PM final `/attended` check-in reminder with the current attendance roster, and a 9:30 PM attendance-close reminder. The 7:40 PM notice is followed by the timestamp-ordered list of members who recorded a late notice for that war, using the same single-column table format as `/war-admin attendance`; only those members are kept in the guild instead of being kicked. Every reminder directs members to `/ran-bot info` for the latest command guide. The start and end messages remind members to use `/attended` by 9:30 PM or they won't be counted for that war's salary.
 - On days without a scheduled war, sends a 7:00 PM `@everyone` reminder clarifying there is no war tonight and showing the weekly war schedule and bot usage instructions.
 - Reminders emphasize that regroup is from 7:00–8:00 PM, offline guild members without a late notice for that war are kicked at 7:40 PM to make room for others, and members who will be late should use `/late` to notify admins.
 - Announces that regroup runs from 7:00–8:00 PM, attendance opens at 7:30 PM, and attendance closes at 9:30 PM.
 - Lets members record themselves with `/attended` between 7:30 and 9:30 PM on war days. Its private confirmation is followed by the current attendance list in the same single-column table format as `/war-admin attendance`, ordered by earliest recorded timestamp. Attendance and late-report records store their `recordedAt` timestamp to the minute in Manila local time, without a timezone suffix. Attendance and late-report lists display each record's timestamp; admin-added attendance also stores the adding admin's ID.
 - Lets members use `/late [date:MM-DD-YYYY]` to privately report in advance that they will be late for a scheduled war. If the date is omitted, it defaults to today when today is a war day or the next scheduled war date otherwise. Its private confirmation is followed by the current late-notice list, using the same single-column table format as `/war-admin attendance`, ordered by earliest reported timestamp. Each member is listed once per war date, and authorized admins can review reports with `/war-admin late [date:MM-DD-YYYY]`. For explicit member dates, today and future war dates are accepted.
-- Provides `/war-info` to show member and admin commands, the weekly schedule, attendance window, reminder times, and this server's configured channel and admin roles.
+- Provides `/ran-bot info` to show the current member, admin, guild-fund, and fixed-party commands, along with the weekly schedule, attendance window, reminders, and this server's configured channels and admin roles.
 - Reminder messages use bold emphasis and blank lines between sections for readability.
 - At 9:00 PM, posts the current attendance list and reminds members they have 30 minutes to use `/attended` before attendance closes at 9:30 PM. With the 9:30 PM close announcement, posts the final attendee list including any check-ins recorded during that last 30 minutes, ordered from earliest to latest recorded timestamp in a single column. Names are shown without pinging attendees, and long lists are split into multiple messages.
 - Provides `/war-admin` commands to configure the reminder channel and admin roles, view attendance, and manually add a member to a scheduled session. All slash commands can be used in any server channel; scheduled reminders go to the configured reminder channel.
@@ -142,9 +148,9 @@ pm2 stop club-war-bot club-war-tunnel
 
 PM2 keeps processes running after you close Terminal, but your Mac must remain powered on and connected to the internet. To make PM2-managed processes start at login, run `pm2 startup`, follow the command PM2 prints, then run `pm2 save`. Do not start a second copy of the bot or tunnel if it is already managed by PM2.
 
-## Admin and attendance commands
+## Club-war commands
 
-- `/war-info` — show commands, the current war schedule, and server configuration.
+- `/ran-bot info` — show the latest bot commands, war schedule, and server configuration.
 - `/attended` — member self check-in during the 7:30–9:30 PM window.
 - `/late [date:MM-DD-YYYY]` — privately report in advance that you will be late; without a date, defaults to today if it is a war day or the next scheduled war date.
 - `/war-admin setup war_channel:<channel> fund_channel:<channel> admin_role:<role>` — configure the war-reminder channel, guild-fund announcement channel, and initial admin role (requires Manage Server permission, or an already authorized role).
@@ -157,6 +163,15 @@ PM2 keeps processes running after you close Terminal, but your Mac must remain p
 - `/guild-fund info` — show all guild fund commands, including admin-only commands.
 - `/war-admin fund ep value:<text>`, `/war-admin fund gold value:<text>`, and `/war-admin fund php value:<text>` — update a fund value. If an announcement channel is configured, the bot posts all latest balances and mentions `@everyone`.
 - `/war-admin fund channel channel:<channel>` — set the channel for guild fund announcements.
+
+## Fixed-party commands
+
+- `/fix-party info` — show the fixed-party command guide.
+- `/fix-party list` — publicly show all parties, leaders, members, class/type, and all eight roster slots.
+- `/fix-party create [name]` — create a party; the optional name defaults to `<display name>'s Fixed Party`.
+- `/fix-party add name:@user class:<class> type:<type>` and `/fix-party remove name:@user` — leader-only member management using Discord's server member picker.
+- `/fix-party leave` — leave a party; the earliest-joined member becomes leader, or a party with no remaining members is disbanded.
+- `/fix-party disband` — disband a party as its leader.
 
 Attendance and late-report lists are displayed in aligned, monospaced single-column lists, with one numbered member per row. Longer lists are split across multiple private replies.
 

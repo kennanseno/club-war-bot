@@ -1,12 +1,13 @@
 import 'dotenv/config';
 import { InstallGlobalCommands } from './utils.js';
 import { FIX_PARTY_COMMAND } from './fix-party-command.js';
+import { RAN_BOT_COMMAND } from './ran-bot-command.js';
 
 const ADMIN_SUBCOMMANDS = [
   {
     type: 1,
     name: 'setup',
-    description: 'Configure reminder channels and the initial admin role',
+    description: 'Configure war reminder channels and the initial admin role',
     options: [
       {
         type: 7,
@@ -179,13 +180,7 @@ const ALL_COMMANDS = [
     integration_types: [0],
     contexts: [0],
   },
-  {
-    name: 'war-info',
-    description: 'Show attendance commands, admin commands, and the war schedule',
-    type: 1,
-    integration_types: [0],
-    contexts: [0],
-  },
+  RAN_BOT_COMMAND,
   {
     name: 'guild-fund',
     description: 'Show the guild fund or guild fund commands',
@@ -207,7 +202,7 @@ const ALL_COMMANDS = [
   },
   {
     name: 'war-admin',
-    description: 'Configure the club-war attendance bot',
+    description: 'Configure Ran Online club and guild management features',
     type: 1,
     options: ADMIN_SUBCOMMANDS,
     integration_types: [0],
@@ -223,4 +218,4 @@ for (const variable of ['APP_ID', 'DISCORD_TOKEN']) {
 }
 
 await InstallGlobalCommands(process.env.APP_ID, ALL_COMMANDS);
-console.log('Registered club-war attendance commands.');
+console.log('Registered Ran Online club and guild management commands.');
