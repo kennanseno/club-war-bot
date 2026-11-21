@@ -12,10 +12,15 @@ import {
   formatLateListMessages,
 } from './attendance-lists.js';
 import { DiscordRequest } from './utils.js';
+import {
+  getTopupReferralCallout,
+  getTopupReferralReminderMessage,
+} from './topup-reminder.js';
 
 export function getScheduledEvents(parts) {
   const isWarDay = BOT_CONFIG.warWeekdays.includes(parts.weekday);
   const events = [
+    BOT_CONFIG.topupReminder,
     ...(isWarDay
       ? [
           ...BOT_CONFIG.reminders,
@@ -82,9 +87,20 @@ export function formatAttendanceRosterMessages(
   );
 }
 
-async function postEvent(guildId, channelId, date, event) {
+async function postEvent(guildId, channelId, date, event, discordRequest, read) {
+  if (event.topupReferral) {
+    await discordRequest(`channels/${channelId}/messages`, {
+      method: 'POST',
+      body: {
+        content: getTopupReferralReminderMessage(event.referralCode),
+        allowed_mentions: { parse: ['everyone'] },
+      },
+    });
+    return;
+  }
+
   if (event.lateRoster) {
-    const data = await readData();
+    const data = await read();
     const lateReports = data.lateReports.filter(
       (record) => record.guildId === guildId && record.sessionDate === date,
     );
@@ -93,7 +109,7 @@ async function postEvent(guildId, channelId, date, event) {
       lateReports,
       event.rosterTitle,
     )) {
-      await DiscordRequest(`channels/${channelId}/messages`, {
+      await discordRequest(`channels/${channelId}/messages`, {
         method: 'POST',
         body: { content, allowed_mentions: { parse: [] } },
       });
@@ -102,7 +118,7 @@ async function postEvent(guildId, channelId, date, event) {
   }
 
   if (event.roster) {
-    const data = await readData();
+    const data = await read();
     const records = data.attendance
       .filter((record) => record.guildId === guildId && record.sessionDate === date);
     for (const content of formatAttendanceRosterMessages(
@@ -110,7 +126,7 @@ async function postEvent(guildId, channelId, date, event) {
       records,
       event.rosterTitle,
     )) {
-      await DiscordRequest(`channels/${channelId}/messages`, {
+      await discordRequest(`channels/${channelId}/messages`, {
         method: 'POST',
         body: { content, allowed_mentions: { parse: [] } },
       });
@@ -118,7 +134,7 @@ async function postEvent(guildId, channelId, date, event) {
     return;
   }
 
-  await DiscordRequest(`channels/${channelId}/messages`, {
+  await discordRequest(`channels/${channelId}/messages`, {
     method: 'POST',
     body: {
       content: event.message,
@@ -127,26 +143,66 @@ async function postEvent(guildId, channelId, date, event) {
   });
 }
 
-export async function runSchedulerTick(now = new Date()) {
+export async function runSchedulerTick(
+  now = new Date(),
+  { read = readData, update = updateData, request = DiscordRequest } = {},
+) {
   const parts = getManilaParts(now);
   const events = getScheduledEvents(parts);
   if (events.length === 0) return;
 
-  const data = await readData();
+  const data = await read();
   for (const [guildId, settings] of Object.entries(data.guilds)) {
     if (!settings.channelId) continue;
 
-    for (const event of events) {
+    const topup = settings.topup;
+    const topupEnabled =
+      topup?.enabled !== false &&
+      typeof topup?.code === 'string' &&
+      topup.code.trim().length > 0 &&
+      typeof topup?.channelId === 'string' &&
+      topup.channelId.length > 0;
+    const guildEvents = events.flatMap((event) => {
+      if (event.topupReferral) {
+        return topupEnabled
+          ? [{ ...event, referralCode: topup.code, targetChannelId: topup.channelId }]
+          : [];
+      }
+      if (
+        event.key === BOT_CONFIG.nonWarDayReminder.key &&
+        topupEnabled
+      ) {
+        return [{
+          ...event,
+          message: event.message.replace(
+            `\n\n${BOT_INFO_REMINDER}`,
+            `\n\n${getTopupReferralCallout(topup.code)}\n\n${BOT_INFO_REMINDER}`,
+          ),
+        }];
+      }
+      return [event];
+    });
+
+    for (const event of guildEvents) {
       const eventKey = `${guildId}:${parts.date}:${event.key}`;
       if (data.announcements.includes(eventKey)) continue;
       try {
-        await postEvent(guildId, settings.channelId, parts.date, event);
-        await updateData((latest) => {
+        await postEvent(
+          guildId,
+          event.targetChannelId ?? settings.channelId,
+          parts.date,
+          event,
+          request,
+          read,
+        );
+        await update((latest) => {
           if (!latest.announcements.includes(eventKey)) {
             latest.announcements.push(eventKey);
           }
         });
-        data.announcements.push(eventKey);
+        if (!data.announcements.includes(eventKey)) {
+          data.announcements.push(eventKey);
+        }
       } catch (error) {
         console.error(`Failed to send ${event.key} announcement for guild ${guildId}:`, error);
       }

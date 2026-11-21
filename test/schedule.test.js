@@ -11,10 +11,16 @@ import {
   parseWarDateInput,
 } from '../schedule.js';
 import { getManilaParts } from '../schedule.js';
-import { getScheduledEvents } from '../scheduler.js';
+import { getScheduledEvents, runSchedulerTick } from '../scheduler.js';
 import { BOT_INFO_REMINDER, getRanBotInfoMessage } from '../config.js';
 import { RAN_BOT_COMMAND } from '../ran-bot-command.js';
 import { splitDiscordMessages } from '../fix-party.js';
+import {
+  TOPUP_ADMIN_COMMAND,
+  getTopupReferralCallout,
+  getTopupReferralReminderMessage,
+  getTopupInfoMessage,
+} from '../topup-reminder.js';
 
 test('ran-bot command exposes the info subcommand', () => {
   assert.equal(RAN_BOT_COMMAND.name, 'ran-bot');
@@ -22,6 +28,149 @@ test('ran-bot command exposes the info subcommand', () => {
     RAN_BOT_COMMAND.options.map((option) => option.name),
     ['info'],
   );
+});
+
+test('topup admin commands expose configuration, toggles, and manual posting', () => {
+  assert.equal(TOPUP_ADMIN_COMMAND.name, 'topup');
+  assert.deepEqual(
+    TOPUP_ADMIN_COMMAND.options.map((option) => option.name),
+    ['code', 'channel', 'enable', 'disable', 'remind', 'info'],
+  );
+  assert.equal(
+    TOPUP_ADMIN_COMMAND.options.find((option) => option.name === 'code')
+      .options[0].max_length,
+    100,
+  );
+});
+
+test('top-up info documents each command and explains scheduled and manual usage', () => {
+  const message = getTopupInfoMessage();
+  for (const command of ['code', 'channel', 'enable', 'disable', 'remind', 'info']) {
+    assert.match(message, new RegExp(`/war-admin topup ${command}`));
+  }
+  assert.match(message, /6:00 PM Manila time/);
+  assert.match(message, /works while disabled/);
+  assert.match(message, /authorized admins/);
+});
+
+test('top-up referral messages escape user-provided mentions and markdown', () => {
+  const message = getTopupReferralReminderMessage('@everyone `bad` [link](x)');
+  assert.match(message, /^@everyone\n/);
+  assert.match(message, /@\u200beveryone/);
+  assert.doesNotMatch(message, /`bad`/);
+  assert.doesNotMatch(message, /\[link\]\(x\)/);
+  assert.ok(message.endsWith(BOT_INFO_REMINDER));
+  assert.match(getTopupReferralCallout('STREAMER42'), /STREAMER42/);
+});
+
+test('daily top-up reminder sends to its configured channel and allows only everyone ping', async () => {
+  const data = {
+    guilds: {
+      guild: {
+        channelId: 'war-channel',
+        adminRoleIds: [],
+        topup: {
+          code: 'STREAMER42',
+          channelId: 'topup-channel',
+        },
+      },
+    },
+    announcements: [],
+  };
+  const sent = [];
+  await runSchedulerTick(new Date('2026-11-17T10:00:00Z'), {
+    read: async () => data,
+    update: async (mutate) => mutate(data),
+    request: async (endpoint, options) => sent.push({ endpoint, options }),
+  });
+
+  assert.equal(sent.length, 1);
+  assert.equal(sent[0].endpoint, 'channels/topup-channel/messages');
+  assert.match(sent[0].options.body.content, /STREAMER42/);
+  assert.deepEqual(sent[0].options.body.allowed_mentions, { parse: ['everyone'] });
+  assert.deepEqual(data.announcements, ['guild:2026-11-17:topup_referral_1800']);
+  await runSchedulerTick(new Date('2026-11-17T10:00:30Z'), {
+    read: async () => data,
+    update: async (mutate) => mutate(data),
+    request: async (endpoint, options) => sent.push({ endpoint, options }),
+  });
+  assert.equal(sent.length, 1, 'daily reminder is not posted twice in the same minute');
+});
+
+test('daily top-up reminder is scheduled on war days as well', async () => {
+  const data = {
+    guilds: {
+      guild: {
+        channelId: 'war-channel',
+        adminRoleIds: [],
+        topup: { code: 'STREAMER42', channelId: 'topup-channel' },
+      },
+    },
+    announcements: [],
+  };
+  const sent = [];
+  await runSchedulerTick(new Date('2026-11-16T10:00:00Z'), {
+    read: async () => data,
+    update: async (mutate) => mutate(data),
+    request: async (endpoint, options) => sent.push({ endpoint, options }),
+  });
+  assert.ok(sent.some(({ endpoint }) => endpoint === 'channels/topup-channel/messages'));
+  assert.ok(sent.some(({ endpoint }) => endpoint === 'channels/war-channel/messages'));
+});
+
+test('disabled or incomplete top-up configuration does not post', async () => {
+  for (const topup of [
+    { code: 'STREAMER42', channelId: 'topup-channel', enabled: false },
+    { code: 'STREAMER42', enabled: true },
+    { channelId: 'topup-channel', enabled: true },
+  ]) {
+    const data = {
+      guilds: { guild: { channelId: 'war-channel', adminRoleIds: [], topup } },
+      announcements: [],
+    };
+    const sent = [];
+    await runSchedulerTick(new Date('2026-11-17T10:00:00Z'), {
+      read: async () => data,
+      update: async (mutate) => mutate(data),
+      request: async (...args) => sent.push(args),
+    });
+    assert.deepEqual(sent, []);
+    assert.deepEqual(data.announcements, []);
+  }
+});
+
+test('non-war reminder includes the referral callout only when configured and enabled', async () => {
+  for (const enabled of [true, false]) {
+    const data = {
+      guilds: {
+        guild: {
+          channelId: 'war-channel',
+          adminRoleIds: [],
+          topup: {
+            code: 'STREAMER42',
+            channelId: 'topup-channel',
+            enabled,
+          },
+        },
+      },
+      announcements: [],
+    };
+    const sent = [];
+    await runSchedulerTick(new Date('2026-11-17T11:00:00Z'), {
+      read: async () => data,
+      update: async (mutate) => mutate(data),
+      request: async (endpoint, options) => sent.push({ endpoint, options }),
+    });
+    const nonWarReminder = sent.find(
+      ({ endpoint }) => endpoint === 'channels/war-channel/messages',
+    );
+    assert.ok(nonWarReminder);
+    assert.equal(
+      nonWarReminder.options.body.content.includes('STREAMER42'),
+      enabled,
+    );
+    assert.ok(nonWarReminder.options.body.content.endsWith(BOT_INFO_REMINDER));
+  }
 });
 
 test('attendance opens at 7:30 PM and closes at 9:30 PM Manila time', () => {
@@ -229,7 +378,7 @@ test('all war-day announcements include the regroup, kick-off, and late notice',
 
   for (const time of reminderTimes) {
     const event = getScheduledEvents(getManilaParts(new Date(time))).find(
-      (scheduledEvent) => !scheduledEvent.roster,
+      (scheduledEvent) => !scheduledEvent.roster && scheduledEvent.message,
     );
     assert.ok(event, `expected a reminder at ${time}`);
     assert.ok(event.message.endsWith(BOT_INFO_REMINDER));

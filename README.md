@@ -5,7 +5,7 @@ This Discord bot supports club and guild management for **Ran Online**, the Kore
 ## Club and guild features
 
 - **Fixed parties:** Members can create and manage fixed parties of up to eight people total (one leader and up to seven members), with party roles, class/type details, join timestamps, leader succession, and public rosters. See [docs/fix-party-commands](./docs/fix-party-commands).
-- **Guild funds:** Members can view EP, Gold, and PHP cash balances. Authorized admins can update values and announce changes.
+- **Guild funds and top-up referrals:** Members can view EP, Gold, and PHP cash balances. Authorized admins can update values and announce changes, and configure a daily top-up referral-code reminder supporting the guild streamer.
 - **Club-war operations:** The bot schedules reminders, records attendance and late notices, and provides admin views and attendance corrections.
 
 ## Club-war reminders and attendance
@@ -163,6 +163,13 @@ PM2 keeps processes running after you close Terminal, but your Mac must remain p
 - `/guild-fund info` — show all guild fund commands, including admin-only commands.
 - `/war-admin fund ep value:<text>`, `/war-admin fund gold value:<text>`, and `/war-admin fund php value:<text>` — update a fund value. If an announcement channel is configured, the bot posts all latest balances and mentions `@everyone`.
 - `/war-admin fund channel channel:<channel>` — set the channel for guild fund announcements.
+- `/war-admin topup code code:<text>` — set the guild streamer's top-up referral code.
+- `/war-admin topup channel channel:<channel>` — select the separate channel for top-up reminders.
+- `/war-admin topup enable` and `/war-admin topup disable` — toggle scheduled reminders and the non-war reminder callout without clearing the saved code/channel.
+- `/war-admin topup remind` — manually post the referral reminder now, even when scheduled reminders are disabled.
+- `/war-admin topup info` — show the top-up command guide and usage details.
+
+When enabled and both a code and channel are set, the bot posts an `@everyone` reminder in the top-up channel daily at 6:00 PM Manila time. On non-war days, the regular 7:00 PM reminder also includes a short referral-code callout. `/war-admin settings` shows the saved code, channel, and enabled state.
 
 ## Fixed-party commands
 

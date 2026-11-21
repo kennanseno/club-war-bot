@@ -43,6 +43,11 @@ import {
   validateFixPartyAdd,
 } from './fix-party.js';
 import { FIX_PARTY_INFO_MESSAGE } from './fix-party-command.js';
+import {
+  escapeReferralCode,
+  getTopupInfoMessage,
+  getTopupReferralReminderMessage,
+} from './topup-reminder.js';
 import { readGuildFundData, updateGuildFundData } from './guild-fund-store.js';
 import {
   formatGuildFundInfoMessage,
@@ -804,6 +809,119 @@ async function handleAdmin(body, res, data) {
     return response(res, 'The bot has not been configured yet. Ask a server manager to run /war-admin setup.', true);
   }
 
+  if (group === 'topup') {
+    const topup = settings.topup ?? {};
+    if (subcommand === 'info') {
+      return response(res, getTopupInfoMessage(), true);
+    }
+
+    if (subcommand === 'remind') {
+      if (
+        typeof topup.code !== 'string' ||
+        !topup.code.trim() ||
+        typeof topup.channelId !== 'string' ||
+        !topup.channelId
+      ) {
+        return response(
+          res,
+          'Set both the referral code and reminder channel before posting a top-up reminder.',
+          true,
+        );
+      }
+      response(
+        res,
+        `Sending the top-up reminder to <#${topup.channelId}> now...`,
+        true,
+      );
+      try {
+        await DiscordRequest(`channels/${topup.channelId}/messages`, {
+          method: 'POST',
+          body: {
+            content: getTopupReferralReminderMessage(topup.code),
+            allowed_mentions: { parse: ['everyone'] },
+          },
+        });
+      } catch (error) {
+        console.error(`Could not manually post top-up reminder for guild ${guildId}:`, error);
+        try {
+          await sendEphemeralFollowup(
+            body,
+            `The top-up reminder could not be posted to <#${topup.channelId}>. Check the bot's channel permissions.`,
+          );
+        } catch (followupError) {
+          console.error(`Could not report top-up reminder failure for guild ${guildId}:`, followupError);
+        }
+        return;
+      }
+      try {
+        await sendEphemeralFollowup(body, 'The top-up reminder was posted.');
+      } catch (error) {
+        console.error(`Top-up reminder posted but confirmation failed for guild ${guildId}:`, error);
+      }
+      return;
+    }
+
+    if (subcommand === 'code') {
+      const code = getOption(options, 'code')?.trim();
+      if (!code || code.length > 100 || /[\u0000-\u001f\u007f]/.test(code)) {
+        return response(res, 'Enter a referral code between 1 and 100 characters on a single line.', true);
+      }
+      await updateData((store) => {
+        const guildSettings = store.guilds[guildId];
+        guildSettings.topup ??= {};
+        guildSettings.topup.code = code;
+      });
+      return response(
+        res,
+        `Top-up referral code saved. Daily reminders post at 6:00 PM Manila time when reminders are enabled and a channel is configured.${topup.enabled === false ? ' Top-up reminders are currently disabled; use /war-admin topup enable to enable them.' : ''}`,
+        true,
+      );
+    }
+
+    if (subcommand === 'channel') {
+      const channelId = getOption(options, 'channel');
+      if (!channelId) return response(res, 'Choose a channel for top-up reminders.', true);
+      await updateData((store) => {
+        const guildSettings = store.guilds[guildId];
+        guildSettings.topup ??= {};
+        guildSettings.topup.channelId = channelId;
+      });
+      return response(
+        res,
+        `Daily top-up reminders will be posted in <#${channelId}> at 6:00 PM Manila time when enabled and a code is configured.${topup.enabled === false ? ' Top-up reminders are currently disabled; use /war-admin topup enable to enable them.' : ''}`,
+        true,
+      );
+    }
+
+    if (subcommand === 'disable' || subcommand === 'enable') {
+      const enabled = subcommand === 'enable';
+      await updateData((store) => {
+        const guildSettings = store.guilds[guildId];
+        guildSettings.topup ??= {};
+        guildSettings.topup.enabled = enabled;
+      });
+      if (!enabled) {
+        return response(
+          res,
+          'Top-up referral reminders and non-war reminder callouts are disabled. The saved code and channel were kept.',
+          true,
+        );
+      }
+      const hasConfiguration =
+        typeof topup.code === 'string' &&
+        topup.code.trim().length > 0 &&
+        typeof topup.channelId === 'string' &&
+        topup.channelId.length > 0;
+      return response(
+        res,
+        hasConfiguration
+          ? `Top-up referral reminders and non-war callouts are enabled. The daily reminder will post in <#${topup.channelId}> at 6:00 PM Manila time.`
+          : 'Top-up reminders are enabled, but will not post until both a referral code and reminder channel are configured.',
+        true,
+      );
+    }
+  }
+
   if (group === 'fund') {
     if (subcommand === 'channel') {
       const channelId = getOption(options, 'channel');
@@ -856,9 +974,11 @@ async function handleAdmin(body, res, data) {
   if (subcommand === 'settings') {
     const roles = settings.adminRoleIds.map((roleId) => `<@&${roleId}>`).join(', ') || 'None';
     const fund = (await readGuildFundData()).guildFunds[guildId] ?? {};
+    const topup = settings.topup ?? {};
+    const topupStatus = topup.enabled === false ? 'Disabled' : 'Enabled';
     return response(
       res,
-      `**Club war bot settings**\nReminder channel: <#${settings.channelId}>\nAdmin roles: ${roles}\nSchedule: ${WAR_SCHEDULE_TEXT} ${BOT_CONFIG.timezone}\nAttendance: ${formatTime(BOT_CONFIG.attendanceStart)}–${formatTime(BOT_CONFIG.attendanceEnd)} ${BOT_CONFIG.timezone}\nFund announcement channel: ${fund.channelId ? `<#${fund.channelId}>` : 'Not set'}\nEP fund: ${fund.ep ?? 'Not set'}\nGold fund: ${fund.gold ?? 'Not set'}\nPHP cash fund: ${fund.php ?? 'Not set'}`,
+      `**Ran Online bot settings**\nWar reminder channel: <#${settings.channelId}>\nAdmin roles: ${roles}\nSchedule: ${WAR_SCHEDULE_TEXT} ${BOT_CONFIG.timezone}\nAttendance: ${formatTime(BOT_CONFIG.attendanceStart)}–${formatTime(BOT_CONFIG.attendanceEnd)} ${BOT_CONFIG.timezone}\nFund announcement channel: ${fund.channelId ? `<#${fund.channelId}>` : 'Not set'}\nEP fund: ${fund.ep ?? 'Not set'}\nGold fund: ${fund.gold ?? 'Not set'}\nPHP cash fund: ${fund.php ?? 'Not set'}\nTop-up referral reminders: ${topupStatus}\nTop-up referral code: ${topup.code ? `\`${escapeReferralCode(topup.code)}\`` : 'Not set'}\nTop-up reminder channel: ${topup.channelId ? `<#${topup.channelId}>` : 'Not set'}\nTop-up reminder time: 6:00 PM ${BOT_CONFIG.timezone}`,
       true,
     );
   }

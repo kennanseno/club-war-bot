@@ -123,3 +123,36 @@ test('store accepts up to seven party members and rejects an eighth non-leader m
     );
   });
 });
+
+test('store persists top-up referral settings and rejects malformed values', async () => {
+  await withTempStore(async (store) => {
+    await store.update((data) => {
+      data.guilds.guild = {
+        channelId: 'war-channel',
+        adminRoleIds: [],
+        topup: {
+          code: 'STREAMER42',
+          channelId: 'topup-channel',
+          enabled: false,
+        },
+      };
+    });
+    assert.deepEqual((await store.read()).guilds.guild.topup, {
+      code: 'STREAMER42',
+      channelId: 'topup-channel',
+      enabled: false,
+    });
+    await assert.rejects(
+      store.update((data) => {
+        data.guilds.guild.topup.enabled = 'false';
+      }),
+      /Invalid server settings/,
+    );
+    await assert.rejects(
+      store.update((data) => {
+        data.guilds.guild.topup.code = `bad${String.fromCharCode(10)}code`;
+      }),
+      /Invalid server settings/,
+    );
+  });
+});

@@ -129,6 +129,12 @@ export const BOT_CONFIG = Object.freeze({
     minute: 0,
     message: `@everyone **No club war is scheduled for tonight.** The weekly schedule is ${warScheduleText} Manila time.\n\n${NON_WAR_USAGE_TEXT}\n\n${BOT_INFO_REMINDER}`,
   }),
+  topupReminder: Object.freeze({
+    key: 'topup_referral_1800',
+    hour: 18,
+    minute: 0,
+    topupReferral: true,
+  }),
 });
 
 export const WAR_SCHEDULE_TEXT = warScheduleText;
@@ -175,6 +181,12 @@ export function getRanBotInfoMessage(settings) {
     '`/war-admin fund gold value:<text>` — update the guild Gold balance.',
     '`/war-admin fund php value:<text>` — update the guild PHP cash balance.',
     '`/war-admin fund channel channel:<channel>` — set where fund updates are announced with `@everyone`.',
+    '`/war-admin topup code code:<text>` — set the guild streamer top-up referral code.',
+    '`/war-admin topup channel channel:<channel>` — set where daily top-up reminders are posted.',
+    '`/war-admin topup enable` / `/war-admin topup disable` — enable or disable top-up reminders without clearing settings.',
+    '`/war-admin topup remind` — manually post the top-up reminder now (authorized admins).',
+    '`/war-admin topup info` — show top-up reminder commands and usage.',
+    'Daily top-up reminders post at 6:00 PM Manila time when enabled and both code and channel are configured; non-war reminders include a short code callout.',
     '`/war-admin attendance [date:MM-DD-YYYY]` — view session attendance; defaults to the latest war date.',
     '`/war-admin late [date:MM-DD-YYYY]` — view late notices; defaults to the latest war date.',
     '`/war-admin add-attendance member date:MM-DD-YYYY` — add attendance manually.',

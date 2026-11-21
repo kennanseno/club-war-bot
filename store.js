@@ -107,7 +107,19 @@ function validateData(data, filePath) {
       !settings ||
       typeof settings.channelId !== 'string' ||
       !Array.isArray(settings.adminRoleIds) ||
-      settings.adminRoleIds.some((roleId) => typeof roleId !== 'string')
+      settings.adminRoleIds.some((roleId) => typeof roleId !== 'string') ||
+      (settings.topup !== undefined &&
+        (!settings.topup ||
+          typeof settings.topup !== 'object' ||
+          Array.isArray(settings.topup) ||
+          (settings.topup.code !== undefined &&
+            (typeof settings.topup.code !== 'string' ||
+              settings.topup.code.length > 100 ||
+              /[\u0000-\u001f\u007f]/.test(settings.topup.code))) ||
+          (settings.topup.channelId !== undefined &&
+            typeof settings.topup.channelId !== 'string') ||
+          (settings.topup.enabled !== undefined &&
+            typeof settings.topup.enabled !== 'boolean')))
     ) {
       throw new Error(`Invalid server settings in ${filePath}; refusing to overwrite it.`);
     }

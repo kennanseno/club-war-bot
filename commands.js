@@ -2,6 +2,7 @@ import 'dotenv/config';
 import { InstallGlobalCommands } from './utils.js';
 import { FIX_PARTY_COMMAND } from './fix-party-command.js';
 import { RAN_BOT_COMMAND } from './ran-bot-command.js';
+import { TOPUP_ADMIN_COMMAND } from './topup-reminder.js';
 
 const ADMIN_SUBCOMMANDS = [
   {
@@ -155,6 +156,7 @@ const ADMIN_SUBCOMMANDS = [
       },
     ],
   },
+  TOPUP_ADMIN_COMMAND,
 ];
 
 const ALL_COMMANDS = [
