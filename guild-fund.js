@@ -11,11 +11,7 @@ export function formatGuildFundInfoMessage() {
   return [
     '**Guild Fund Commands**',
     '`/guild-fund view` — view current EP, Gold, and PHP balances (anyone).',
-    '`/war-admin fund ep value:<text>` — update the EP (E-Points) balance (authorized admins).',
-    '`/war-admin fund gold value:<text>` — update the Gold balance (authorized admins).',
-    '`/war-admin fund php value:<text>` — update the PHP cash balance (authorized admins).',
-    '`/war-admin fund channel channel:<channel>` — choose where updates are announced (authorized admins).',
-    'After the announcement channel is set, EP, Gold, or PHP updates post all latest balances there and mention `@everyone`.',
+    'Authorized admins can view all management commands with `/ran-admin info`.',
   ].join('\n');
 }
 

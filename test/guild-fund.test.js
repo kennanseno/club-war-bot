@@ -28,14 +28,11 @@ test('guild fund display shows configured values and unset values', () => {
   );
 });
 
-test('guild fund info lists public and admin commands and announcement behavior', () => {
+test('guild fund info lists public commands and points admins to their guide', () => {
   const message = formatGuildFundInfoMessage();
   assert.match(message, /`\/guild-fund view`.*anyone/);
-  assert.match(message, /`\/war-admin fund ep value:<text>`.*authorized admins/);
-  assert.match(message, /`\/war-admin fund gold value:<text>`.*authorized admins/);
-  assert.match(message, /`\/war-admin fund php value:<text>`.*authorized admins/);
-  assert.match(message, /`\/war-admin fund channel channel:<channel>`.*authorized admins/);
-  assert.match(message, /mention `@everyone`/);
+  assert.match(message, /`\/ran-admin info`/);
+  assert.doesNotMatch(message, /\/ran-admin fund/);
 });
 
 test('guild fund updates persist per guild and preserve other values', async () => {

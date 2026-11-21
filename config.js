@@ -31,7 +31,7 @@ export function formatTime({ hour, minute }) {
 export const BOT_USAGE_TEXT =
   `**Attendance:** Members use \`/attended\` from ${formatTime(ATTENDANCE_START)} until ${formatTime(ATTENDANCE_END)} on war nights.\n\n**Running late?** Use \`/late [date:MM-DD-YYYY]\`; the date defaults to today on war days or the next war date otherwise.`;
 
-export const BOT_INFO_REMINDER = '**Need help with the bot commands? Use `/ran-bot info`.**';
+export const BOT_INFO_REMINDER = '**Need help with the bot commands? Use `/ran info`.**';
 
 export const NON_WAR_USAGE_TEXT =
   `**Attendance:** On war days, use \`/attended\` from ${formatTime(ATTENDANCE_START)} until ${formatTime(ATTENDANCE_END)} to record that you joined the war. It helps track participation and your war salary.\n\n**Late notice:** Use \`/late [date:MM-DD-YYYY]\` when you expect to arrive late for a war. This records that you are still joining and helps the guild keep you instead of kicking you offline at 7:40 PM.\n\n**Why use them:** \`/attended\` records participation after you join, while \`/late\` lets the guild know you are coming later.`;
@@ -139,32 +139,26 @@ export const BOT_CONFIG = Object.freeze({
 
 export const WAR_SCHEDULE_TEXT = warScheduleText;
 
-export function getRanBotInfoMessage(settings) {
+export function getRanInfoMessage() {
   const reminders = BOT_CONFIG.reminders
     .map(({ hour, minute }) => formatTime({ hour, minute }))
     .join(', ');
-  const serverConfiguration = settings
-    ? [
-        `**Reminder channel:** <#${settings.channelId}>`,
-        `**Admin roles:** ${settings.adminRoleIds.map((roleId) => `<@&${roleId}>`).join(', ') || 'None'}`,
-      ].join('\n')
-    : 'This bot has not been configured in this server yet. A server manager can run `/war-admin setup`.';
 
   return [
     '**Ran Online Club & Guild Management Bot**',
     `**Schedule:** ${WAR_SCHEDULE_TEXT} ${BOT_CONFIG.timezone}`,
-    '**Commands:** All commands can be used in any server channel. Scheduled reminders are sent to the configured reminder channel.',
+    '**Commands:** Member commands can be used in any server channel. Scheduled reminders are sent to the configured reminder channel.',
     `**Regroup:** ${formatTime(BOT_CONFIG.regroupStart)}–${formatTime(BOT_CONFIG.regroupEnd)} Manila time; offline guild members are kicked at 7:40 PM.`,
     `**Attendance:** Use \`/attended\` from ${formatTime(BOT_CONFIG.attendanceStart)} until ${formatTime(BOT_CONFIG.attendanceEnd)} on war days.`,
     '**Late notice:** Use `/late [date:MM-DD-YYYY]` to report you will be late. The date defaults to today on war days or the next war date otherwise.',
     `**Reminders:** ${reminders} on war days; 7:00 PM on non-war days.`,
     '',
     '**Member commands:**',
-    '`/ran-bot info` — show this command guide.',
+    '`/ran info` — show this member command guide.',
     '`/attended` — record your attendance during the war-day attendance window.',
     '`/late [date:MM-DD-YYYY]` — report that you will arrive late for a scheduled war.',
     '`/guild-fund` or `/guild-fund view` — view current EP, Gold, and PHP cash balances.',
-    '`/guild-fund info` — show guild fund commands.',
+    '`/guild-fund info` — show commands for viewing guild funds.',
     '`/fix-party info` — show fixed-party commands.',
     '`/fix-party list` — list parties, members, and open slots.',
     '`/fix-party create [name]` — create a fixed party.',
@@ -172,24 +166,35 @@ export function getRanBotInfoMessage(settings) {
     '`/fix-party remove name:@user` — remove a member (party leader only).',
     '`/fix-party leave` — leave a fixed party.',
     '`/fix-party disband` — disband a fixed party (party leader only).',
-    '',
-    '**Admin commands** (authorized admin role):',
-    '`/war-admin setup war_channel:<channel> fund_channel:<channel> admin_role:<role>` — configure war reminders, fund announcements, and the initial admin role.',
-    '`/war-admin settings` — view current bot settings.',
-    '`/war-admin role-add` / `/war-admin role-remove` — manage authorized roles.',
-    '`/war-admin fund ep value:<text>` — update the guild EP balance.',
-    '`/war-admin fund gold value:<text>` — update the guild Gold balance.',
-    '`/war-admin fund php value:<text>` — update the guild PHP cash balance.',
-    '`/war-admin fund channel channel:<channel>` — set where fund updates are announced with `@everyone`.',
-    '`/war-admin topup code code:<text>` — set the guild streamer top-up referral code.',
-    '`/war-admin topup channel channel:<channel>` — set where daily top-up reminders are posted.',
-    '`/war-admin topup enable` / `/war-admin topup disable` — enable or disable top-up reminders without clearing settings.',
-    '`/war-admin topup remind` — manually post the top-up reminder now (authorized admins).',
-    '`/war-admin topup info` — show top-up reminder commands and usage.',
-    'Daily top-up reminders post at 6:00 PM Manila time when enabled and both code and channel are configured; non-war reminders include a short code callout.',
-    '`/war-admin attendance [date:MM-DD-YYYY]` — view session attendance; defaults to the latest war date.',
-    '`/war-admin late [date:MM-DD-YYYY]` — view late notices; defaults to the latest war date.',
-    '`/war-admin add-attendance member date:MM-DD-YYYY` — add attendance manually.',
+  ].join('\n');
+}
+
+export function getRanAdminInfoMessage(settings) {
+  const serverConfiguration = settings
+    ? [
+        `**Reminder channel:** <#${settings.channelId}>`,
+        `**Admin roles:** ${settings.adminRoleIds.map((roleId) => `<@&${roleId}>`).join(', ') || 'None'}`,
+      ].join('\n')
+    : 'This bot has not been configured in this server yet. A server manager can run `/ran-admin setup`.';
+
+  return [
+    '**Ran Online Admin Commands** (authorized admin role; Manage Server can view this guide and run setup):',
+    '`/ran-admin info` — show this admin command guide.',
+    '`/ran-admin setup war_channel:<channel> fund_channel:<channel> admin_role:<role>` — configure war reminders, fund announcements, and the initial admin role (Manage Server permission or an authorized role).',
+    '`/ran-admin settings` — view current bot settings.',
+    '`/ran-admin role-add` / `/ran-admin role-remove` — manage authorized roles.',
+    '`/ran-admin attendance [date:MM-DD-YYYY]` — view session attendance; defaults to the latest war date.',
+    '`/ran-admin late [date:MM-DD-YYYY]` — view late notices; defaults to the latest war date.',
+    '`/ran-admin add-attendance member date:MM-DD-YYYY` — add attendance manually.',
+    '`/ran-admin fund ep value:<text>`, `/ran-admin fund gold value:<text>`, and `/ran-admin fund php value:<text>` — update guild fund balances.',
+    '`/ran-admin fund channel channel:<channel>` — set where fund updates are announced with `@everyone`.',
+    '`/ran-admin topup code code:<text>` — set the streamer referral code.',
+    '`/ran-admin topup channel channel:<channel>` — set the daily reminder channel.',
+    '`/ran-admin topup enable` / `/ran-admin topup disable` — enable or disable scheduled reminders and non-war callouts.',
+    '`/ran-admin topup remind` — post a reminder immediately; requires a code and channel, but works while disabled.',
+    '`/ran-admin topup info` — show top-up reminder commands and usage.',
+    '`/ran-admin topup settings` — view the saved top-up code, channel, and enabled state.',
+    '`/ran-admin topup info` also explains the daily 6:00 PM Manila reminder and the non-war referral-code callout.',
     '',
     '**Current server configuration**',
     serverConfiguration,

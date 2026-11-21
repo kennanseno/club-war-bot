@@ -12,20 +12,25 @@ import {
 } from '../schedule.js';
 import { getManilaParts } from '../schedule.js';
 import { getScheduledEvents, runSchedulerTick } from '../scheduler.js';
-import { BOT_INFO_REMINDER, getRanBotInfoMessage } from '../config.js';
-import { RAN_BOT_COMMAND } from '../ran-bot-command.js';
+import {
+  BOT_INFO_REMINDER,
+  getRanAdminInfoMessage,
+  getRanInfoMessage,
+} from '../config.js';
+import { RAN_COMMAND } from '../ran-command.js';
 import { splitDiscordMessages } from '../fix-party.js';
 import {
   TOPUP_ADMIN_COMMAND,
   getTopupReferralCallout,
   getTopupReferralReminderMessage,
   getTopupInfoMessage,
+  getTopupSettingsMessage,
 } from '../topup-reminder.js';
 
-test('ran-bot command exposes the info subcommand', () => {
-  assert.equal(RAN_BOT_COMMAND.name, 'ran-bot');
+test('ran command exposes the member info subcommand', () => {
+  assert.equal(RAN_COMMAND.name, 'ran');
   assert.deepEqual(
-    RAN_BOT_COMMAND.options.map((option) => option.name),
+    RAN_COMMAND.options.map((option) => option.name),
     ['info'],
   );
 });
@@ -34,7 +39,7 @@ test('topup admin commands expose configuration, toggles, and manual posting', (
   assert.equal(TOPUP_ADMIN_COMMAND.name, 'topup');
   assert.deepEqual(
     TOPUP_ADMIN_COMMAND.options.map((option) => option.name),
-    ['code', 'channel', 'enable', 'disable', 'remind', 'info'],
+    ['code', 'channel', 'enable', 'disable', 'remind', 'info', 'settings'],
   );
   assert.equal(
     TOPUP_ADMIN_COMMAND.options.find((option) => option.name === 'code')
@@ -45,12 +50,30 @@ test('topup admin commands expose configuration, toggles, and manual posting', (
 
 test('top-up info documents each command and explains scheduled and manual usage', () => {
   const message = getTopupInfoMessage();
-  for (const command of ['code', 'channel', 'enable', 'disable', 'remind', 'info']) {
-    assert.match(message, new RegExp(`/war-admin topup ${command}`));
+  for (const command of ['code', 'channel', 'enable', 'disable', 'remind', 'info', 'settings']) {
+    assert.match(message, new RegExp(`/ran-admin topup ${command}`));
   }
   assert.match(message, /6:00 PM Manila time/);
   assert.match(message, /works while disabled/);
   assert.match(message, /authorized admins/);
+});
+
+test('top-up settings show saved values, escape the code, and report unset configuration', () => {
+  const configured = getTopupSettingsMessage({
+    code: '@everyone `CODE`',
+    channelId: 'topup-channel',
+    enabled: false,
+  });
+  assert.match(configured, /\*\*Status:\*\* Disabled/);
+  assert.ok(configured.includes('@\u200beveryone'));
+  assert.ok(configured.includes('\\`CODE\\`'));
+  assert.match(configured, /<\#topup-channel>/);
+  assert.match(configured, /6:00 PM Asia\/Manila/);
+
+  const unset = getTopupSettingsMessage();
+  assert.match(unset, /\*\*Status:\*\* Enabled/);
+  assert.match(unset, /\*\*Referral code:\*\* Not set/);
+  assert.match(unset, /\*\*Reminder channel:\*\* Not set/);
 });
 
 test('top-up referral messages escape user-provided mentions and markdown', () => {
@@ -261,7 +284,7 @@ test('non-war days get a single 7:00 PM weekly schedule reminder', () => {
   assert.match(events[0].message, /records participation after you join/);
   assert.match(events[0].message, /Use `\/late \[date:MM-DD-YYYY\]` when you expect to arrive late/);
   assert.match(events[0].message, /helps the guild keep you instead of kicking you offline at 7:40 PM/);
-  assert.doesNotMatch(events[0].message, /guild-fund|\/war-admin fund|\/war-admin late/);
+  assert.doesNotMatch(events[0].message, /guild-fund|\/ran-admin fund|\/ran-admin late/);
   assert.ok(events[0].message.endsWith(BOT_INFO_REMINDER));
 });
 
@@ -386,9 +409,9 @@ test('all war-day announcements include the regroup, kick-off, and late notice',
     assert.match(event.message, /kicked at 7:40 PM/);
     assert.match(event.message, /\*\*Running late\?\*\* Use `\/late \[date:MM-DD-YYYY\]`/);
     assert.match(event.message, /\*\*Attendance:\*\* Members use `\/attended` from 7:30 PM until 9:30 PM/);
-    assert.doesNotMatch(event.message, /Guild fund:|\/guild-fund|\/war-admin/);
+    assert.doesNotMatch(event.message, /Guild fund:|\/guild-fund|\/ran-admin/);
     if (time === '2026-11-16T13:30:00Z') {
-      assert.match(event.message, /Need help with the bot commands\? Use `\/ran-bot info`/);
+      assert.match(event.message, /Need help with the bot commands\? Use `\/ran info`/);
     }
     assert.match(event.message, /\*\*Regroup/);
     assert.match(event.message, /\*\*Offline guild members will be kicked/);
@@ -439,7 +462,7 @@ test('war-day start and end reminders run at 8 PM and 9 PM Manila time', () => {
   assert.match(warEnd.message, /30 minutes left to use `\/attended`/i);
   assert.match(warEnd.message, /Attendance closes at 9:30 PM Manila time/);
   assert.match(warEnd.message, /No check-in means no salary for this war!/);
-  assert.match(warEnd.message, /Need help with the bot commands\? Use `\/ran-bot info`/);
+  assert.match(warEnd.message, /Need help with the bot commands\? Use `\/ran info`/);
   assert.ok(warEnd.message.endsWith(BOT_INFO_REMINDER));
 
   const attendanceRoster = getScheduledEvents(
@@ -467,7 +490,7 @@ test('9:30 PM attendance close uses gamer-style participation wording', () => {
     event.message,
     /Attendance is now closed. GG to the squad—participation is locked/,
   );
-  assert.match(event.message, /Need help with the bot commands\? Use `\/ran-bot info`/);
+  assert.match(event.message, /Need help with the bot commands\? Use `\/ran info`/);
 });
 
 test('non-war day reminder is not scheduled at other times or on war days', () => {
@@ -480,51 +503,53 @@ test('non-war day reminder is not scheduled at other times or on war days', () =
   assert.equal(warDay.some((event) => event.key === 'non_war_day_schedule'), false);
 });
 
-test('Ran Online bot info shows the latest commands, configured schedule, and server setup', () => {
-  const message = getRanBotInfoMessage({
-    channelId: 'war-channel',
-    adminRoleIds: ['war-admin-role'],
-  });
+test('Ran member info contains member commands and schedule but no admin commands', () => {
+  const message = getRanInfoMessage();
 
   assert.match(message, /Monday, Wednesday, and Saturday, 8:00 PM–9:00 PM Asia\/Manila/);
   assert.match(message, /\*\*Regroup:\*\* 7:00 PM–8:00 PM Manila time/);
   assert.match(message, /`\/attended` from 7:30 PM until 9:30 PM/);
   assert.match(message, /Use `\/late \[date:MM-DD-YYYY\]`/);
   assert.match(message, /date defaults to today on war days or the next war date otherwise/);
-  assert.match(message, /`\/war-admin attendance \[date:MM-DD-YYYY\]`.*defaults to the latest war date/);
-  assert.match(message, /`\/war-admin late \[date:MM-DD-YYYY\]`.*defaults to the latest war date/);
   assert.match(message, /`\/guild-fund view`/);
-  assert.match(message, /`\/war-admin fund ep value:<text>`/);
-  assert.match(message, /`\/war-admin fund gold value:<text>`/);
-  assert.match(message, /`\/war-admin fund php value:<text>`/);
-  assert.match(message, /`\/war-admin fund channel channel:<channel>`/);
-  assert.match(message, /`\/guild-fund info`/);
-  assert.match(message, /`\/ran-bot info`/);
+  assert.match(message, /`\/ran info`/);
   assert.match(message, /`\/fix-party add name:@user class:<class> type:<type>`/);
-  assert.match(message, /All commands can be used in any server channel/);
-  assert.match(
-    message,
-    /`\/war-admin setup war_channel:<channel> fund_channel:<channel> admin_role:<role>`/,
-  );
-  assert.match(message, /<\#war-channel>/);
-  assert.match(message, /<@&war-admin-role>/);
+  assert.match(message, /Member commands can be used in any server channel/);
+  assert.doesNotMatch(message, /\/ran-admin|admin commands|current server configuration/i);
   assert.match(message, /Reminders:\*\* 5:00 PM, 6:00 PM, 6:30 PM, 7:00 PM, 7:15 PM, 7:30 PM, 7:40 PM, 8:00 PM, 9:00 PM, 9:15 PM/);
 });
 
-test('Ran Online bot info explains setup when the server is not configured', () => {
-  assert.match(getRanBotInfoMessage(), /has not been configured/);
-  assert.match(getRanBotInfoMessage(), /`\/war-admin setup`/);
+test('Ran admin info shows admin commands and current server configuration', () => {
+  const message = getRanAdminInfoMessage({
+    channelId: 'war-channel',
+    adminRoleIds: ['ran-admin-role'],
+  });
+
+  assert.match(message, /`\/ran-admin attendance \[date:MM-DD-YYYY\]`.*defaults to the latest war date/);
+  assert.match(message, /`\/ran-admin late \[date:MM-DD-YYYY\]`.*defaults to the latest war date/);
+  assert.match(message, /`\/ran-admin fund ep value:<text>`/);
+  assert.match(message, /`\/ran-admin fund gold value:<text>`/);
+  assert.match(message, /`\/ran-admin fund php value:<text>`/);
+  assert.match(message, /`\/ran-admin fund channel channel:<channel>`/);
+  assert.match(message, /`\/ran-admin info`/);
+  assert.match(message, /`\/ran-admin topup remind`/);
+  assert.match(
+    message,
+    /`\/ran-admin setup war_channel:<channel> fund_channel:<channel> admin_role:<role>`/,
+  );
+  assert.match(message, /<\#war-channel>/);
+  assert.match(message, /<@&ran-admin-role>/);
+  assert.doesNotMatch(message, /\/war-admin|\/ran-bot/);
 });
 
-test('Ran Online bot info includes all latest commands within Discord message limits', () => {
-  const message = getRanBotInfoMessage();
-  const pages = splitDiscordMessages(message.split('\n'));
+test('Ran admin info explains setup when the server is not configured', () => {
+  assert.match(getRanAdminInfoMessage(), /has not been configured/);
+  assert.match(getRanAdminInfoMessage(), /`\/ran-admin setup`/);
+});
 
-  assert.match(message, /`\/attended`/);
-  assert.match(message, /`\/late \[date:MM-DD-YYYY\]`/);
-  assert.match(message, /`\/guild-fund info`/);
-  assert.match(message, /`\/fix-party disband`/);
-  assert.match(message, /`\/war-admin add-attendance member date:MM-DD-YYYY`/);
-  assert.ok(pages.length > 1);
-  assert.ok(pages.every((page) => page.length <= 1900));
+test('member and admin guides fit Discord message limits after splitting', () => {
+  for (const message of [getRanInfoMessage(), getRanAdminInfoMessage()]) {
+    const pages = splitDiscordMessages(message.split('\n'));
+    assert.ok(pages.every((page) => page.length <= 1900));
+  }
 });

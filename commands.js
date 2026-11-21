@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import { InstallGlobalCommands } from './utils.js';
 import { FIX_PARTY_COMMAND } from './fix-party-command.js';
-import { RAN_BOT_COMMAND } from './ran-bot-command.js';
+import { RAN_COMMAND } from './ran-command.js';
 import { TOPUP_ADMIN_COMMAND } from './topup-reminder.js';
 
 const ADMIN_SUBCOMMANDS = [
@@ -36,6 +36,11 @@ const ADMIN_SUBCOMMANDS = [
     type: 1,
     name: 'settings',
     description: 'Show the current club-war bot settings',
+  },
+  {
+    type: 1,
+    name: 'info',
+    description: 'Show admin commands and usage',
   },
   {
     type: 1,
@@ -182,7 +187,7 @@ const ALL_COMMANDS = [
     integration_types: [0],
     contexts: [0],
   },
-  RAN_BOT_COMMAND,
+  RAN_COMMAND,
   {
     name: 'guild-fund',
     description: 'Show the guild fund or guild fund commands',
@@ -196,14 +201,14 @@ const ALL_COMMANDS = [
       {
         type: 1,
         name: 'info',
-        description: 'Show public and admin guild fund commands',
+        description: 'Show commands for viewing guild funds',
       },
     ],
     integration_types: [0],
     contexts: [0],
   },
   {
-    name: 'war-admin',
+    name: 'ran-admin',
     description: 'Configure Ran Online club and guild management features',
     type: 1,
     options: ADMIN_SUBCOMMANDS,

@@ -53,19 +53,36 @@ export const TOPUP_ADMIN_COMMAND = Object.freeze({
       name: 'info',
       description: 'Show top-up reminder commands and usage',
     },
+    {
+      type: 1,
+      name: 'settings',
+      description: 'Show top-up reminder configuration',
+    },
   ],
 });
 
 export function getTopupInfoMessage() {
   return [
     '**Top-up referral reminder commands** (authorized admins):',
-    '`/war-admin topup code code:<text>` — save the streamer referral code.',
-    '`/war-admin topup channel channel:<channel>` — choose where daily reminders are posted.',
-    '`/war-admin topup enable` — enable scheduled reminders and the non-war reminder callout.',
-    '`/war-admin topup disable` — disable scheduled reminders and the callout without clearing settings.',
-    '`/war-admin topup remind` — post a reminder now; requires a saved code and channel, but works while disabled.',
-    '`/war-admin topup info` — show this command guide.',
+    '`/ran-admin topup code code:<text>` — save the streamer referral code.',
+    '`/ran-admin topup channel channel:<channel>` — choose where daily reminders are posted.',
+    '`/ran-admin topup enable` — enable scheduled reminders and the non-war reminder callout.',
+    '`/ran-admin topup disable` — disable scheduled reminders and the callout without clearing settings.',
+    '`/ran-admin topup remind` — post a reminder now; requires a saved code and channel, but works while disabled.',
+    '`/ran-admin topup info` — show this command guide.',
+    '`/ran-admin topup settings` — view the saved referral code, channel, and enabled state.',
     'After setting a code and channel, enable reminders. The bot posts an `@everyone` reminder daily at 6:00 PM Manila time. Enabled non-war reminders also include a short referral-code callout.',
+  ].join('\n');
+}
+
+export function getTopupSettingsMessage(topup = {}) {
+  const enabled = topup.enabled !== false;
+  return [
+    '**Top-up referral settings**',
+    `**Status:** ${enabled ? 'Enabled' : 'Disabled'}`,
+    `**Referral code:** ${topup.code ? `\`${escapeReferralCode(topup.code)}\`` : 'Not set'}`,
+    `**Reminder channel:** ${topup.channelId ? `<#${topup.channelId}>` : 'Not set'}`,
+    '**Reminder time:** 6:00 PM Asia/Manila',
   ].join('\n');
 }
 

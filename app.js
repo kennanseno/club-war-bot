@@ -15,7 +15,8 @@ import {
 import {
   BOT_CONFIG,
   formatTime,
-  getRanBotInfoMessage,
+  getRanAdminInfoMessage,
+  getRanInfoMessage,
   WAR_SCHEDULE_TEXT,
 } from './config.js';
 import {
@@ -47,6 +48,7 @@ import {
   escapeReferralCode,
   getTopupInfoMessage,
   getTopupReferralReminderMessage,
+  getTopupSettingsMessage,
 } from './topup-reminder.js';
 import { readGuildFundData, updateGuildFundData } from './guild-fund-store.js';
 import {
@@ -290,8 +292,8 @@ async function handleLate(body, res) {
     res,
     body,
     result === 'duplicate'
-      ? `Your late notice for ${formatWarDate(sessionDate)} is already recorded. An admin can view it with /war-admin late date:${formatWarDate(sessionDate)}.`
-      : `Your late notice for the ${formatWarDate(sessionDate)} war is recorded. An admin can view it with /war-admin late date:${formatWarDate(sessionDate)}.`,
+      ? `Your late notice for ${formatWarDate(sessionDate)} is already recorded. An admin can view it with /ran-admin late date:${formatWarDate(sessionDate)}.`
+      : `Your late notice for the ${formatWarDate(sessionDate)} war is recorded. An admin can view it with /ran-admin late date:${formatWarDate(sessionDate)}.`,
     formatLateListMessages(sessionDate, lateReports),
   );
 }
@@ -765,6 +767,16 @@ async function handleAdmin(body, res, data) {
   const settings = current.guilds[guildId];
   const isBootstrapAdmin = hasManageGuildPermission(body);
 
+  if (subcommand === 'info') {
+    if (!isBootstrapAdmin && !isAuthorizedAdmin(body, settings)) {
+      return response(res, 'You need Manage Server permission or an authorized admin role to view admin commands.', true);
+    }
+    const infoMessages = splitDiscordMessages(
+      getRanAdminInfoMessage(settings).split('\n'),
+    );
+    return sendAdminMessages(res, body, infoMessages);
+  }
+
   if (subcommand !== 'setup' && !isAuthorizedAdmin(body, settings)) {
     return response(res, 'You need an authorized admin role to use this command.', true);
   }
@@ -800,19 +812,22 @@ async function handleAdmin(body, res, data) {
     });
     return response(
       res,
-      `Setup complete. Commands can be used in any server channel. War reminders will be sent in <#${warChannelId}> and guild fund updates will be sent in <#${fundChannelId}>. <@&${adminRoleId}> can manage bot settings and attendance. Use /war-admin settings to review the configuration.`,
+      `Setup complete. Commands can be used in any server channel. War reminders will be sent in <#${warChannelId}> and guild fund updates will be sent in <#${fundChannelId}>. <@&${adminRoleId}> can manage bot settings and attendance. Use /ran-admin settings to review the configuration.`,
       true,
     );
   }
 
   if (!settings) {
-    return response(res, 'The bot has not been configured yet. Ask a server manager to run /war-admin setup.', true);
+    return response(res, 'The bot has not been configured yet. Ask a server manager to run /ran-admin setup.', true);
   }
 
   if (group === 'topup') {
     const topup = settings.topup ?? {};
     if (subcommand === 'info') {
       return response(res, getTopupInfoMessage(), true);
+    }
+    if (subcommand === 'settings') {
+      return response(res, getTopupSettingsMessage(topup), true);
     }
 
     if (subcommand === 'remind') {
@@ -873,7 +888,7 @@ async function handleAdmin(body, res, data) {
       });
       return response(
         res,
-        `Top-up referral code saved. Daily reminders post at 6:00 PM Manila time when reminders are enabled and a channel is configured.${topup.enabled === false ? ' Top-up reminders are currently disabled; use /war-admin topup enable to enable them.' : ''}`,
+        `Top-up referral code saved. Daily reminders post at 6:00 PM Manila time when reminders are enabled and a channel is configured.${topup.enabled === false ? ' Top-up reminders are currently disabled; use /ran-admin topup enable to enable them.' : ''}`,
         true,
       );
     }
@@ -888,7 +903,7 @@ async function handleAdmin(body, res, data) {
       });
       return response(
         res,
-        `Daily top-up reminders will be posted in <#${channelId}> at 6:00 PM Manila time when enabled and a code is configured.${topup.enabled === false ? ' Top-up reminders are currently disabled; use /war-admin topup enable to enable them.' : ''}`,
+        `Daily top-up reminders will be posted in <#${channelId}> at 6:00 PM Manila time when enabled and a code is configured.${topup.enabled === false ? ' Top-up reminders are currently disabled; use /ran-admin topup enable to enable them.' : ''}`,
         true,
       );
     }
@@ -941,7 +956,7 @@ async function handleAdmin(body, res, data) {
       if (!fund.channelId) {
         return response(
           res,
-          `${subcommand === 'ep' ? 'EP' : subcommand === 'gold' ? 'Gold' : 'PHP cash'} fund updated. Set an announcement channel with /war-admin fund channel to notify everyone.`,
+          `${subcommand === 'ep' ? 'EP' : subcommand === 'gold' ? 'Gold' : 'PHP cash'} fund updated. Set an announcement channel with /ran-admin fund channel to notify everyone.`,
           true,
         );
       }
@@ -1093,15 +1108,14 @@ app.post(
     try {
       if (data.name === 'attended') return await handleAttended(req.body, res);
       if (data.name === 'late') return await handleLate(req.body, res);
-      if (data.name === 'ran-bot') {
+      if (data.name === 'ran') {
         if (!requireGuild(req.body, res)) return;
         const { name: subcommand } = getSubcommand(data);
         if (subcommand !== 'info') {
-          return response(res, 'Unknown Ran Online bot command.', true);
+          return response(res, 'Unknown Ran Online member command.', true);
         }
-        const current = await readData();
         const infoMessages = splitDiscordMessages(
-          getRanBotInfoMessage(current.guilds[req.body.guild_id]).split('\n'),
+          getRanInfoMessage().split('\n'),
         );
         return sendAdminMessages(res, req.body, infoMessages);
       }
@@ -1113,7 +1127,7 @@ app.post(
         const current = await readGuildFundData();
         return response(res, formatGuildFundMessage(current.guildFunds[req.body.guild_id]));
       }
-      if (data.name === 'war-admin') return await handleAdmin(req.body, res, data);
+      if (data.name === 'ran-admin') return await handleAdmin(req.body, res, data);
       if (data.name === 'fix-party') return await handleFixParty(req.body, res);
       return response(res, `Unknown command: ${data.name}`, true);
     } catch (error) {

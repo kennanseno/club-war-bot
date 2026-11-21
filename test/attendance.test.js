@@ -42,7 +42,7 @@ test('self check-ins and admin additions are unique per member and session', asy
 });
 
 test('admin attendance entries retain the administrator audit identity', async () => {
-  const directory = await mkdtemp(join(tmpdir(), 'club-war-admin-attendance-'));
+  const directory = await mkdtemp(join(tmpdir(), 'club-ran-admin-attendance-'));
   try {
     const store = createStore(join(directory, 'data.json'));
     const result = await addAttendanceManually(store.update, {
