@@ -31,7 +31,8 @@ export function formatTime({ hour, minute }) {
 export const BOT_USAGE_TEXT =
   `**Attendance:** Members use \`/attended\` from ${formatTime(ATTENDANCE_START)} until ${formatTime(ATTENDANCE_END)} on war nights.\n\n**Running late?** Use \`/late [date:MM-DD-YYYY]\`; the date defaults to today on war days or the next war date otherwise.`;
 
-export const BOT_INFO_REMINDER = '**Need help with the bot commands? Use `/ran info`.**';
+export const BOT_INFO_REMINDER =
+  '**Need help? Members use `/ran info`; admins use `/ran-admin info`.**';
 
 export const NON_WAR_USAGE_TEXT =
   `**Attendance:** On war days, use \`/attended\` from ${formatTime(ATTENDANCE_START)} until ${formatTime(ATTENDANCE_END)} to record that you joined the war. It helps track participation and your war salary.\n\n**Late notice:** Use \`/late [date:MM-DD-YYYY]\` when you expect to arrive late for a war. This records that you are still joining and helps the guild keep you instead of kicking you offline at 7:40 PM.\n\n**Why use them:** \`/attended\` records participation after you join, while \`/late\` lets the guild know you are coming later.`;

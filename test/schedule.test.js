@@ -409,9 +409,9 @@ test('all war-day announcements include the regroup, kick-off, and late notice',
     assert.match(event.message, /kicked at 7:40 PM/);
     assert.match(event.message, /\*\*Running late\?\*\* Use `\/late \[date:MM-DD-YYYY\]`/);
     assert.match(event.message, /\*\*Attendance:\*\* Members use `\/attended` from 7:30 PM until 9:30 PM/);
-    assert.doesNotMatch(event.message, /Guild fund:|\/guild-fund|\/ran-admin/);
+    assert.doesNotMatch(event.message, /Guild fund:|\/guild-fund/);
     if (time === '2026-11-16T13:30:00Z') {
-      assert.match(event.message, /Need help with the bot commands\? Use `\/ran info`/);
+      assert.match(event.message, /Members use `\/ran info`; admins use `\/ran-admin info`/);
     }
     assert.match(event.message, /\*\*Regroup/);
     assert.match(event.message, /\*\*Offline guild members will be kicked/);
@@ -462,7 +462,7 @@ test('war-day start and end reminders run at 8 PM and 9 PM Manila time', () => {
   assert.match(warEnd.message, /30 minutes left to use `\/attended`/i);
   assert.match(warEnd.message, /Attendance closes at 9:30 PM Manila time/);
   assert.match(warEnd.message, /No check-in means no salary for this war!/);
-  assert.match(warEnd.message, /Need help with the bot commands\? Use `\/ran info`/);
+  assert.match(warEnd.message, /Members use `\/ran info`; admins use `\/ran-admin info`/);
   assert.ok(warEnd.message.endsWith(BOT_INFO_REMINDER));
 
   const attendanceRoster = getScheduledEvents(
@@ -490,7 +490,7 @@ test('9:30 PM attendance close uses gamer-style participation wording', () => {
     event.message,
     /Attendance is now closed. GG to the squad—participation is locked/,
   );
-  assert.match(event.message, /Need help with the bot commands\? Use `\/ran info`/);
+  assert.match(event.message, /Members use `\/ran info`; admins use `\/ran-admin info`/);
 });
 
 test('non-war day reminder is not scheduled at other times or on war days', () => {
