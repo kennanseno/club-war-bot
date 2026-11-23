@@ -888,7 +888,7 @@ async function handleAdmin(body, res, data) {
       });
       return response(
         res,
-        `Top-up referral code saved. Daily reminders post at 6:00 PM Manila time when reminders are enabled and a channel is configured.${topup.enabled === false ? ' Top-up reminders are currently disabled; use /ran-admin topup enable to enable them.' : ''}`,
+        `Top-up referral reminders post at 6:00 PM daily and 9:05 PM on war days when reminders are enabled and a channel is configured.${topup.enabled === false ? ' Top-up reminders are currently disabled; use /ran-admin topup enable to enable them.' : ''}`,
         true,
       );
     }
@@ -903,7 +903,7 @@ async function handleAdmin(body, res, data) {
       });
       return response(
         res,
-        `Daily top-up reminders will be posted in <#${channelId}> at 6:00 PM Manila time when enabled and a code is configured.${topup.enabled === false ? ' Top-up reminders are currently disabled; use /ran-admin topup enable to enable them.' : ''}`,
+        `Top-up referral reminders will be posted in <#${channelId}> at 6:00 PM daily and 9:05 PM on war days when enabled and a code is configured.${topup.enabled === false ? ' Top-up reminders are currently disabled; use /ran-admin topup enable to enable them.' : ''}`,
         true,
       );
     }
@@ -930,7 +930,7 @@ async function handleAdmin(body, res, data) {
       return response(
         res,
         hasConfiguration
-          ? `Top-up referral reminders and non-war callouts are enabled. The daily reminder will post in <#${topup.channelId}> at 6:00 PM Manila time.`
+          ? `Top-up referral reminders and non-war callouts are enabled. Reminders will post in <#${topup.channelId}> at 6:00 PM daily and 9:05 PM on war days (Manila time).`
           : 'Top-up reminders are enabled, but will not post until both a referral code and reminder channel are configured.',
         true,
       );
@@ -993,7 +993,7 @@ async function handleAdmin(body, res, data) {
     const topupStatus = topup.enabled === false ? 'Disabled' : 'Enabled';
     return response(
       res,
-      `**Ran Online bot settings**\nWar reminder channel: <#${settings.channelId}>\nAdmin roles: ${roles}\nSchedule: ${WAR_SCHEDULE_TEXT} ${BOT_CONFIG.timezone}\nAttendance: ${formatTime(BOT_CONFIG.attendanceStart)}–${formatTime(BOT_CONFIG.attendanceEnd)} ${BOT_CONFIG.timezone}\nFund announcement channel: ${fund.channelId ? `<#${fund.channelId}>` : 'Not set'}\nEP fund: ${fund.ep ?? 'Not set'}\nGold fund: ${fund.gold ?? 'Not set'}\nPHP cash fund: ${fund.php ?? 'Not set'}\nTop-up referral reminders: ${topupStatus}\nTop-up referral code: ${topup.code ? `\`${escapeReferralCode(topup.code)}\`` : 'Not set'}\nTop-up reminder channel: ${topup.channelId ? `<#${topup.channelId}>` : 'Not set'}\nTop-up reminder time: 6:00 PM ${BOT_CONFIG.timezone}`,
+      `**Ran Online bot settings**\nWar reminder channel: <#${settings.channelId}>\nAdmin roles: ${roles}\nSchedule: ${WAR_SCHEDULE_TEXT} ${BOT_CONFIG.timezone}\nAttendance: ${formatTime(BOT_CONFIG.attendanceStart)}–${formatTime(BOT_CONFIG.attendanceEnd)} ${BOT_CONFIG.timezone}\nFund announcement channel: ${fund.channelId ? `<#${fund.channelId}>` : 'Not set'}\nEP fund: ${fund.ep ?? 'Not set'}\nGold fund: ${fund.gold ?? 'Not set'}\nPHP cash fund: ${fund.php ?? 'Not set'}\nTop-up referral reminders: ${topupStatus}\nTop-up referral code: ${topup.code ? `\`${escapeReferralCode(topup.code)}\`` : 'Not set'}\nTop-up reminder channel: ${topup.channelId ? `<#${topup.channelId}>` : 'Not set'}\nTop-up reminder times: 6:00 PM daily; 9:05 PM on war days (${BOT_CONFIG.timezone})`,
       true,
     );
   }

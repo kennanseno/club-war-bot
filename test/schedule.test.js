@@ -54,6 +54,7 @@ test('top-up info documents each command and explains scheduled and manual usage
     assert.match(message, new RegExp(`/ran-admin topup ${command}`));
   }
   assert.match(message, /6:00 PM Manila time/);
+  assert.match(message, /9:05 PM on war days/);
   assert.match(message, /works while disabled/);
   assert.match(message, /authorized admins/);
 });
@@ -68,7 +69,7 @@ test('top-up settings show saved values, escape the code, and report unset confi
   assert.ok(configured.includes('@\u200beveryone'));
   assert.ok(configured.includes('\\`CODE\\`'));
   assert.match(configured, /<\#topup-channel>/);
-  assert.match(configured, /6:00 PM Asia\/Manila/);
+  assert.match(configured, /6:00 PM daily; 9:05 PM on war days/);
 
   const unset = getTopupSettingsMessage();
   assert.match(unset, /\*\*Status:\*\* Enabled/);
@@ -139,6 +140,38 @@ test('daily top-up reminder is scheduled on war days as well', async () => {
   });
   assert.ok(sent.some(({ endpoint }) => endpoint === 'channels/topup-channel/messages'));
   assert.ok(sent.some(({ endpoint }) => endpoint === 'channels/war-channel/messages'));
+});
+
+test('war-day top-up reminder posts at 9:05 PM to the configured channel', async () => {
+  const data = {
+    guilds: {
+      guild: {
+        channelId: 'war-channel',
+        adminRoleIds: [],
+        topup: { code: 'STREAMER42', channelId: 'topup-channel' },
+      },
+    },
+    announcements: [],
+  };
+  const sent = [];
+  await runSchedulerTick(new Date('2026-11-16T13:05:00Z'), {
+    read: async () => data,
+    update: async (mutate) => mutate(data),
+    request: async (endpoint, options) => sent.push({ endpoint, options }),
+  });
+
+  assert.equal(sent.length, 1);
+  assert.equal(sent[0].endpoint, 'channels/topup-channel/messages');
+  assert.match(sent[0].options.body.content, /STREAMER42/);
+  assert.deepEqual(sent[0].options.body.allowed_mentions, { parse: ['everyone'] });
+  assert.deepEqual(data.announcements, ['guild:2026-11-16:topup_referral_2105']);
+});
+
+test('9:05 PM top-up reminder is not scheduled on non-war days', () => {
+  const events = getScheduledEvents(
+    getManilaParts(new Date('2026-11-17T13:05:00Z')),
+  );
+  assert.equal(events.some((event) => event.key === 'topup_referral_2105'), false);
 });
 
 test('disabled or incomplete top-up configuration does not post', async () => {

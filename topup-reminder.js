@@ -71,7 +71,7 @@ export function getTopupInfoMessage() {
     '`/ran-admin topup remind` — post a reminder now; requires a saved code and channel, but works while disabled.',
     '`/ran-admin topup info` — show this command guide.',
     '`/ran-admin topup settings` — view the saved referral code, channel, and enabled state.',
-    'After setting a code and channel, enable reminders. The bot posts an `@everyone` reminder daily at 6:00 PM Manila time. Enabled non-war reminders also include a short referral-code callout.',
+    'After setting a code and channel, enable reminders. The bot posts an `@everyone` reminder daily at 6:00 PM Manila time and again at 9:05 PM on war days. Enabled non-war reminders also include a short referral-code callout.',
   ].join('\n');
 }
 
@@ -82,7 +82,7 @@ export function getTopupSettingsMessage(topup = {}) {
     `**Status:** ${enabled ? 'Enabled' : 'Disabled'}`,
     `**Referral code:** ${topup.code ? `\`${escapeReferralCode(topup.code)}\`` : 'Not set'}`,
     `**Reminder channel:** ${topup.channelId ? `<#${topup.channelId}>` : 'Not set'}`,
-    '**Reminder time:** 6:00 PM Asia/Manila',
+    '**Reminder times:** 6:00 PM daily; 9:05 PM on war days (Asia/Manila)',
   ].join('\n');
 }
 

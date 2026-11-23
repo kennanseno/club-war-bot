@@ -174,7 +174,7 @@ PM2 keeps processes running after you close Terminal, but your Mac must remain p
 - `/ran-admin topup info` — show top-up reminder commands and usage.
 - `/ran-admin topup settings` — view the saved referral code, reminder channel, and enabled state.
 
-When enabled and both a code and channel are set, the bot posts an `@everyone` reminder in the top-up channel daily at 6:00 PM Manila time. On non-war days, the regular 7:00 PM reminder also includes a short referral-code callout.
+When enabled and both a code and channel are set, the bot posts an `@everyone` reminder in the top-up channel daily at 6:00 PM and again at 9:05 PM on war days (Manila time). On non-war days, the regular 7:00 PM reminder also includes a short referral-code callout.
 
 ## Fixed-party commands
 

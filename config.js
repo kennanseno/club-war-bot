@@ -136,6 +136,12 @@ export const BOT_CONFIG = Object.freeze({
     minute: 0,
     topupReferral: true,
   }),
+  topupWarReminder: Object.freeze({
+    key: 'topup_referral_2105',
+    hour: 21,
+    minute: 5,
+    topupReferral: true,
+  }),
 });
 
 export const WAR_SCHEDULE_TEXT = warScheduleText;
@@ -195,7 +201,7 @@ export function getRanAdminInfoMessage(settings) {
     '`/ran-admin topup remind` — post a reminder immediately; requires a code and channel, but works while disabled.',
     '`/ran-admin topup info` — show top-up reminder commands and usage.',
     '`/ran-admin topup settings` — view the saved top-up code, channel, and enabled state.',
-    '`/ran-admin topup info` also explains the daily 6:00 PM Manila reminder and the non-war referral-code callout.',
+    '`/ran-admin topup info` also explains the daily 6:00 PM Manila reminder, the 9:05 PM war-day reminder, and the non-war referral-code callout.',
     '',
     '**Current server configuration**',
     serverConfiguration,

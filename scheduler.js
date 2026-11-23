@@ -24,6 +24,7 @@ export function getScheduledEvents(parts) {
     ...(isWarDay
       ? [
           ...BOT_CONFIG.reminders,
+          BOT_CONFIG.topupWarReminder,
           {
             key: 'late_roster_1940',
             hour: 19,
