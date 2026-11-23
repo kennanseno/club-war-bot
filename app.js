@@ -36,6 +36,10 @@ import { readData, updateData } from './store.js';
 import { startScheduler } from './scheduler.js';
 import { DiscordRequest } from './utils.js';
 import {
+  deferInteractionResponse,
+  editDeferredInteractionResponse,
+} from './interaction-responses.js';
+import {
   FIX_PARTY_LEADER_ROLE_NAME,
   formatFixPartyList,
   getPartyLedBy,
@@ -187,7 +191,12 @@ async function sendAdminMessages(res, body, messages) {
 }
 
 async function sendEphemeralList(res, body, confirmation, messages) {
-  response(res, confirmation, true);
+  await editDeferredInteractionResponse(
+    process.env.APP_ID,
+    body.token,
+    confirmation,
+  );
+  res.locals.interactionResponseCompleted = true;
   for (const content of messages) {
     await DiscordRequest(`webhooks/${process.env.APP_ID}/${body.token}`, {
       method: 'POST',
@@ -233,6 +242,7 @@ async function handleAttended(body, res) {
     return response(res, 'I could not identify your server account, so attendance was not recorded.', true);
   }
 
+  deferInteractionResponse(res, EPHEMERAL);
   const result = await recordAttendance(updateData, {
     guildId,
     sessionDate: status.sessionDate,
@@ -276,6 +286,7 @@ async function handleLate(body, res) {
     return response(res, 'I could not identify your server account, so your late notice was not recorded.', true);
   }
 
+  deferInteractionResponse(res, EPHEMERAL);
   const result = await recordLateReport(updateData, {
     guildId: body.guild_id,
     sessionDate,
@@ -1132,7 +1143,31 @@ app.post(
       return response(res, `Unknown command: ${data.name}`, true);
     } catch (error) {
       console.error(`Interaction ${data.name} failed:`, error);
-      if (res.headersSent) return;
+      if (res.headersSent) {
+        if (
+          res.locals.interactionDeferred &&
+          !res.locals.interactionResponseCompleted
+        ) {
+          const content =
+            data.name === 'attended'
+              ? 'Attendance could not be confirmed because of a system error. Please check with a server admin before trying again.'
+              : 'Your late notice could not be confirmed because of a system error. Please check with a server admin before trying again.';
+          try {
+            await editDeferredInteractionResponse(
+              process.env.APP_ID,
+              req.body.token,
+              content,
+            );
+            res.locals.interactionResponseCompleted = true;
+          } catch (responseError) {
+            console.error(
+              `Failed to report ${data.name} error to Discord:`,
+              responseError,
+            );
+          }
+        }
+        return;
+      }
       return response(
         res,
         data.name === 'fix-party'

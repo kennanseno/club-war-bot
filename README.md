@@ -112,7 +112,17 @@ Invite the application to your server with the `applications.commands` scope and
 
 ## Keep it running in the background (optional)
 
-The app and ngrok tunnel both need to stay online. For macOS, [PM2](https://pm2.keymetrics.io/) can run them in the background and restart them if they exit. Install PM2:
+The app and ngrok tunnel both need to stay online. If your laptop is turned off or asleep, both stop and Discord cannot reach the bot; start the bot and ngrok tunnel again after waking or turning on the laptop. PM2 can restart processes while the laptop is running, but it cannot keep the bot available while the laptop is off or asleep. For continuous availability, host the bot on an always-on server.
+
+The app listens on port `3000` by default. After restarting your laptop, from the project directory run this single command to start both the bot and its ngrok tunnel:
+
+```sh
+npm run start:local
+```
+
+This script uses the reserved domain `atom-shivering-attention.ngrok-free.dev`. Keep the terminal open while using the bot; press Ctrl+C to stop both processes. If you have configured the bot to listen on a different port, update the ngrok forwarding port in `start-local.js` to match.
+
+For macOS, [PM2](https://pm2.keymetrics.io/) can run the app and ngrok in the background and restart them if they exit. Install PM2:
 
 ```sh
 npm install --global pm2

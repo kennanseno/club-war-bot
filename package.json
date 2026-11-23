@@ -10,6 +10,7 @@
   },
   "scripts": {
     "start": "node app.js",
+    "start:local": "node start-local.js",
     "register": "node commands.js",
     "dev": "nodemon app.js",
     "test": "node --test"
